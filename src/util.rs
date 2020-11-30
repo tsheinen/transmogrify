@@ -62,7 +62,7 @@ pub fn from_hexstring(str: String) -> Vec<u8> {
         .filter(|x| *x != ' ')
         .collect::<Vec<_>>()
         .chunks(2)
-        .map(|x| x.iter().collect::<String>().parse::<u8>().unwrap_or(0))
+        .map(|x| u8::from_str_radix(&x.iter().collect::<String>(), 16).unwrap_or(0))
         .collect()
 }
 
@@ -74,7 +74,9 @@ pub fn asm(instr: String) -> Result<Vec<u8>, keystone::Error> {
     engine
         .option(OptionType::SYNTAX, keystone::OPT_SYNTAX_NASM)
         .expect("Could not set option to nasm syntax");
-    engine.asm(instr, 0).map(|x| x.bytes)
+    let x = engine.asm(instr.clone(), 0);
+    println!("{:#?}", &x);
+    x.map(|x| x.bytes)
 }
 
 pub struct Application {
@@ -168,6 +170,7 @@ impl Application {
     }
 
     pub fn rebuild_bytes(&mut self) -> Result<(), String> {
+        eprintln!("rebuilding bytes....");
         // set disasm and assemble (keystone maybe?), return error if it can't be assembled
         let function = self.get_current_function().name.clone();
 
@@ -180,6 +183,8 @@ impl Application {
             .get_mut(&function)
             .ok_or("function doesn't exist")?;
         for i in 0..bytes.len() {
+            eprintln!("assembling = {:?}",disasm[i].clone());
+            eprintln!("asm = {:?}", &asm(disasm[i].clone()).expect("asm to work"));
             bytes[i] = to_hexstring(&asm(disasm[i].clone()).expect("asm to work"));
         }
         Ok(())
@@ -277,4 +282,16 @@ impl Application {
             }
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_assembles() {
+
+        assert_eq!(vec![0x55], asm("push rbp".to_string()).unwrap());
+    }
+
 }
