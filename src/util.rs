@@ -5,56 +5,29 @@ use std::collections::HashMap;
 use tui::widgets::ListState;
 use r2pipe::{open_pipe, R2Pipe};
 
-pub struct StatefulList<T> {
-    pub state: ListState,
-    pub items: Vec<T>,
+
+pub enum SelectedColumn {
+    Function,
+    Hex,
+    Disasm
 }
 
-impl<T> StatefulList<T> {
-    pub fn new() -> StatefulList<T> {
-        StatefulList {
-            state: ListState::default(),
-            items: Vec::new(),
+impl SelectedColumn {
+    pub fn to_i8(&self) -> i8 {
+        match self {
+            Self::Function => 0,
+            Self::Hex => 1,
+            Self::Disasm => 2,
         }
     }
 
-    pub fn with_items(items: Vec<T>) -> StatefulList<T> {
-        StatefulList {
-            state: ListState::default(),
-            items,
+    pub fn from_i8(val: i8) -> SelectedColumn {
+        match ((val % 3) + 3) % 3 {
+            0 => Self::Function,
+            1 => Self::Hex,
+            2 => Self::Disasm,
+            _ => unreachable!()
         }
-    }
-
-    pub fn next(&mut self) {
-        let i = match self.state.selected() {
-            Some(i) => {
-                if i >= self.items.len() - 1 {
-                    0
-                } else {
-                    i + 1
-                }
-            }
-            None => 0,
-        };
-        self.state.select(Some(i));
-    }
-
-    pub fn previous(&mut self) {
-        let i = match self.state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.items.len() - 1
-                } else {
-                    i - 1
-                }
-            }
-            None => 0,
-        };
-        self.state.select(Some(i));
-    }
-
-    pub fn unselect(&mut self) {
-        self.state.select(None);
     }
 }
 
@@ -98,6 +71,9 @@ pub struct Application {
     pub functions: Vec<Function>,
     pub bytes: HashMap<String, Vec<Vec<u8>>>,
     pub disasm: HashMap<String, Vec<String>>,
+    pub function_state: ListState,
+    pub editor_state: ListState,
+    pub selected: SelectedColumn
 }
 
 impl Application {
@@ -134,6 +110,9 @@ impl Application {
             functions,
             bytes: bytes.into_iter().collect(),
             disasm: disasm.into_iter().collect(),
+            function_state: ListState::default(),
+            editor_state: ListState::default(),
+            selected: SelectedColumn::Function
         }
     }
 
@@ -194,4 +173,67 @@ impl Application {
         let disasm = self.disasm.get(&function).cloned().unwrap_or(vec![]);
         bytes.into_iter().zip(disasm.into_iter())
     }
+
+    pub fn get_current_function(&self) -> &Function {
+        &self.functions[self.function_state.selected().unwrap_or(0)]
+    }
+
+
+    pub fn next(&mut self) {
+        let current_func_name = self.get_current_function().name.clone();
+
+        let mut current_state = match self.selected {
+            SelectedColumn::Function => &mut self.function_state,
+            SelectedColumn::Hex | SelectedColumn::Disasm => &mut self.editor_state
+        };
+
+        let i = match current_state.selected() {
+            Some(i) => {
+                if i >= self.bytes.get(&current_func_name).map(|x| x.len()).unwrap_or(0) - 1 {
+                    0
+                } else {
+                    i + 1
+                }
+            }
+            None => 0,
+        };
+        current_state.select(Some(i));
+    }
+
+    pub fn previous(&mut self) {
+        let current_func_name = self.get_current_function().name.clone();
+        let mut current_state = match self.selected {
+            SelectedColumn::Function => &mut (self.function_state),
+            SelectedColumn::Hex | SelectedColumn::Disasm => &mut (self.editor_state)
+        };
+
+        let i = match current_state.selected() {
+            Some(i) => {
+                if i == 0 {
+                    self.bytes.get(&current_func_name).map(|x| x.len()).unwrap_or(0) - 1
+                } else {
+                    i - 1
+                }
+            }
+            None => 0,
+        };
+        current_state.select(Some(i));
+    }
+
+
+
+    pub fn next_col(&mut self) {
+        self.selected = SelectedColumn::from_i8(self.selected.to_i8() + 1)
+    }
+
+    pub fn previous_col(&mut self) {
+        self.selected = SelectedColumn::from_i8(self.selected.to_i8() - 1)
+
+    }
+
+
+    // pub fn unselect_function(&mut self) {
+    //     self.function_state.select(None);
+    // }
+
 }

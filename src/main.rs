@@ -2,7 +2,7 @@ mod event;
 mod util;
 
 use crate::event::{Event, Events};
-use crate::util::{Application, StatefulList};
+use crate::util::{Application, SelectedColumn};
 use capstone::prelude::*;
 use capstone::Capstone;
 use r2pipe::{open_pipe, R2Pipe};
@@ -57,7 +57,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let program = std::fs::read(program_name).unwrap();
 
-
     let functions = get_functions(program_name);
 
     let function_names = functions.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
@@ -73,9 +72,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // App
 
-    let byte_list = Application::new(program_name);
-
-    let mut function_list_state = StatefulList::with_items(function_names);
+    let mut app = Application::new(program_name);
+    app.editor_state.select(Some(0));
 
     loop {
         terminal.draw(|f| {
@@ -92,11 +90,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .split(f.size());
 
             {
-                let items: Vec<ListItem> = function_list_state
-                    .items
+                let items: Vec<ListItem> = app
+                    .functions
                     .iter()
                     .map(|i| {
-                        let mut lines = vec![Spans::from(i.as_ref())];
+                        let mut lines = vec![Spans::from(i.name.as_ref())];
                         ListItem::new(lines).style(Style::default().fg(Color::White))
                     })
                     .collect();
@@ -105,17 +103,27 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .highlight_style(
                         Style::default()
                             .bg(Color::LightGreen)
+                            .fg(Color::Black)
                             .add_modifier(Modifier::BOLD),
-                    )
-                    .highlight_symbol(">> ");
-                f.render_stateful_widget(items, chunks[0], &mut function_list_state.state);
+                    );
+                f.render_stateful_widget(items, chunks[0], &mut app.function_state);
             }
 
-            let func = functions[function_list_state.state.selected().unwrap_or(0)].clone();
+            let func = app.get_current_function();
+
+
+            match app.selected {
+                SelectedColumn::Hex => {
+                    f.set_cursor(chunks[1].x, chunks[1].y + 1u16 + app.editor_state.selected().unwrap_or(0) as u16);
+                },
+                SelectedColumn::Disasm => {
+                    f.set_cursor(chunks[2].x, chunks[1].y + 1u16 + app.editor_state.selected().unwrap_or(0) as u16);
+                },
+                _ => {}
+            }
 
             {
-
-                let hex_bytes = byte_list
+                let hex_bytes = app
                     .bytes
                     .get(&func.name)
                     .unwrap()
@@ -140,13 +148,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                         Style::default()
                             .bg(Color::LightGreen)
                             .add_modifier(Modifier::BOLD),
-                    )
-                    .highlight_symbol(">> ");
+                    );
                 f.render_widget(items, chunks[1]);
             }
 
             {
-                let disasm = byte_list.disasm.get(&func.name).unwrap();
+                let disasm = app.disasm.get(&func.name).unwrap();
                 let items: Vec<ListItem> = disasm
                     .iter()
                     .map(|i| {
@@ -169,17 +176,39 @@ fn main() -> Result<(), Box<dyn Error>> {
             Event::Input(input) => match input {
                 Key::Char('q') => {
                     break;
+                },
+                Key::Char('a') => {
+                    app.selected = SelectedColumn::Function
+                },
+                Key::Char('s') => {
+                    app.selected = SelectedColumn::Hex
+                },
+                Key::Char('d') => {
+                    app.selected = SelectedColumn::Disasm
                 }
-                Key::Left => {
-                    function_list_state.unselect();
-                }
-                Key::Down => {
-                    function_list_state.next();
-                }
-                Key::Up => {
-                    function_list_state.previous();
-                }
-                _ => {}
+                _ => match app.selected {
+                    SelectedColumn::Function => match input {
+                        Key::Down => {
+                            app.next();
+                            app.editor_state.select(Some(0));
+                        }
+                        Key::Up => {
+                            app.previous();
+                            app.editor_state.select(Some(0));
+                        }
+                        _ => {}
+                    },
+                    SelectedColumn::Hex | SelectedColumn::Disasm => match input {
+                        Key::Down => {
+                            app.next();
+                        }
+                        Key::Up => {
+                            app.previous();
+                        }
+                        _ => {}
+                    },
+                    _ => {}
+                },
             },
 
             Event::Tick => {}
