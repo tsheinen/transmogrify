@@ -66,7 +66,7 @@ pub fn to_hexstring(bytes: &[u8]) -> String {
         .collect::<Vec<String>>()
         .join(" ")
 }
-pub fn from_hexstring(str: String) -> Vec<u8> {
+pub fn from_hexstring(str: &str) -> Vec<u8> {
     str.chars()
         .filter(|x| *x != ' ')
         .collect::<Vec<_>>()
@@ -81,7 +81,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_assembles() {
+    fn test_assemble() {
         assert_eq!(vec![0x55], assemble("push rbp".to_string()).unwrap());
+    }
+
+    #[test]
+    fn test_disassembles() {
+        assert_eq!("push rbp", disassemble(&[0x55]).first().unwrap().1);
+    }
+
+    #[test]
+    fn tests_to_hexstring() {
+        assert_eq!("01 02 03 fa", to_hexstring(&[0x1,0x2,0x3,0xfa]));
+    }
+
+    #[test]
+    fn tests_from_hexstring() {
+        assert_eq!(vec![0x1, 0x3, 0x5, 0xba], from_hexstring("01 03 05 ba"));
+        assert_eq!(vec![0x1, 0x3, 0x5, 0xba], from_hexstring("010305ba"));
+        assert_eq!(vec![0x1, 0x3, 0x5, 0xba], from_hexstring("01        0305ba"));
     }
 }

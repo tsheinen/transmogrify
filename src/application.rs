@@ -90,7 +90,7 @@ impl Application {
             .get_mut(&function)
             .expect("current function doesn't exist in map?");
         for i in 0..bytes.len() {
-            disasm_vec[i] = util::disassemble(&util::from_hexstring(bytes[i].clone()))
+            disasm_vec[i] = util::disassemble(&util::from_hexstring(&bytes[i]))
                 .first()
                 .map(|x| x.1.clone())
                 .unwrap_or_else(||"INVALID".to_string());
