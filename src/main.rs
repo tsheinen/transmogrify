@@ -1,8 +1,9 @@
 mod event;
 mod util;
+mod application;
 
 use crate::event::{Event, Events};
-use crate::util::{Application, Mode, SelectedColumn};
+use crate::util::{Mode, SelectedColumn};
 use capstone::prelude::*;
 use capstone::Capstone;
 use r2pipe::{open_pipe, R2Pipe};
@@ -20,6 +21,7 @@ use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, List, ListItem, ListState};
 use tui::Terminal;
+use crate::application::Application;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Function {
