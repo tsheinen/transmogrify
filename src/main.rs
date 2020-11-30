@@ -2,7 +2,7 @@ mod event;
 mod util;
 
 use crate::event::{Event, Events};
-use crate::util::{Application, SelectedColumn};
+use crate::util::{Application, Mode, SelectedColumn};
 use capstone::prelude::*;
 use capstone::Capstone;
 use r2pipe::{open_pipe, R2Pipe};
@@ -74,21 +74,30 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut app = Application::new(program_name);
     app.editor_state.select(Some(0));
+    app.function_state.select(Some(0));
 
     loop {
         terminal.draw(|f| {
-            let chunks = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints(
-                    [
-                        Constraint::Percentage(33),
-                        Constraint::Percentage(33),
-                        Constraint::Percentage(33),
-                    ]
-                    .as_ref(),
-                )
-                .split(f.size());
-
+            let (functions, hex, disasm_view, bar) = {
+                let vchunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .margin(0)
+                    .constraints([Constraint::Percentage(95), Constraint::Percentage(5)].as_ref())
+                    .split(f.size());
+                let chunks = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints(
+                        [
+                            Constraint::Percentage(33),
+                            Constraint::Percentage(33),
+                            Constraint::Percentage(33),
+                        ]
+                        .as_ref(),
+                    )
+                    .split(vchunks[0]);
+                (chunks[0], chunks[1], chunks[2], vchunks[1])
+            };
+            app.column_width = hex.width as isize;
             {
                 let items: Vec<ListItem> = app
                     .functions
@@ -106,19 +115,24 @@ fn main() -> Result<(), Box<dyn Error>> {
                             .fg(Color::Black)
                             .add_modifier(Modifier::BOLD),
                     );
-                f.render_stateful_widget(items, chunks[0], &mut app.function_state);
+                f.render_stateful_widget(items, functions, &mut app.function_state);
             }
 
             let func = app.get_current_function();
 
-
             match app.selected {
                 SelectedColumn::Hex => {
-                    f.set_cursor(chunks[1].x, chunks[1].y + 1u16 + app.editor_state.selected().unwrap_or(0) as u16);
-                },
+                    f.set_cursor(
+                        hex.x + app.cursor_index as u16 + 1,
+                        hex.y + 1u16 + app.editor_state.selected().unwrap_or(0) as u16,
+                    );
+                }
                 SelectedColumn::Disasm => {
-                    f.set_cursor(chunks[2].x, chunks[1].y + 1u16 + app.editor_state.selected().unwrap_or(0) as u16);
-                },
+                    f.set_cursor(
+                        disasm_view.x + app.cursor_index as u16 + 1,
+                        disasm_view.y + 1u16 + app.editor_state.selected().unwrap_or(0) as u16,
+                    );
+                }
                 _ => {}
             }
 
@@ -149,7 +163,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             .bg(Color::LightGreen)
                             .add_modifier(Modifier::BOLD),
                     );
-                f.render_widget(items, chunks[1]);
+                f.render_widget(items, hex);
             }
 
             {
@@ -168,42 +182,55 @@ fn main() -> Result<(), Box<dyn Error>> {
                             .bg(Color::LightGreen)
                             .add_modifier(Modifier::BOLD),
                     );
-                f.render_widget(items, chunks[2]);
+                f.render_widget(items, disasm_view);
             }
+
         })?;
 
         match events.next()? {
-            Event::Input(input) => match input {
-                Key::Char('q') => {
-                    break;
-                },
-                Key::Char('a') => {
-                    app.selected = SelectedColumn::Function
-                },
-                Key::Char('s') => {
-                    app.selected = SelectedColumn::Hex
-                },
-                Key::Char('d') => {
-                    app.selected = SelectedColumn::Disasm
-                }
-                _ => match app.selected {
-                    SelectedColumn::Function => match input {
-                        Key::Down => {
-                            app.next();
-                            app.editor_state.select(Some(0));
-                        }
-                        Key::Up => {
-                            app.previous();
-                            app.editor_state.select(Some(0));
-                        }
+            Event::Input(input) => match app.mode {
+                Mode::Viewing => match input {
+                    Key::Char('q') => {
+                        break;
+                    }
+                    Key::Char('a') => app.selected = SelectedColumn::Function,
+                    Key::Char('s') => app.selected = SelectedColumn::Hex,
+                    Key::Char('d') => app.selected = SelectedColumn::Disasm,
+                    Key::Char('e') => app.mode = Mode::Editing,
+                    _ => match app.selected {
+                        SelectedColumn::Function => match input {
+                            Key::Down => {
+                                app.next();
+                                app.editor_state.select(Some(0));
+                            }
+                            Key::Up => {
+                                app.previous();
+                                app.editor_state.select(Some(0));
+                            }
+                            _ => {}
+                        },
+                        SelectedColumn::Hex | SelectedColumn::Disasm => match input {
+                            Key::Down => {
+                                app.next();
+                            }
+                            Key::Up => {
+                                app.previous();
+                            }
+                            _ => {}
+                        },
                         _ => {}
                     },
-                    SelectedColumn::Hex | SelectedColumn::Disasm => match input {
-                        Key::Down => {
-                            app.next();
+                },
+                Mode::Editing => match input {
+                    Key::Esc => app.mode = Mode::Viewing,
+                    _ if app.selected.editable() => match input {
+                        Key::Left => {
+                            let len = app.column_width;
+                            app.cursor_index = (((app.cursor_index - 1) % len) + len) % len;
                         }
-                        Key::Up => {
-                            app.previous();
+                        Key::Right => {
+                            let len = app.column_width;
+                            app.cursor_index = (((app.cursor_index + 1) % len) + len) % len;
                         }
                         _ => {}
                     },

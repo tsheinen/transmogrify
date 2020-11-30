@@ -1,34 +1,28 @@
 use crate::{get_functions, Function};
 use capstone::prelude::*;
 use capstone::{Capstone, Insn};
+use r2pipe::{open_pipe, R2Pipe};
 use std::collections::HashMap;
 use tui::widgets::ListState;
-use r2pipe::{open_pipe, R2Pipe};
-
 
 pub enum SelectedColumn {
     Function,
     Hex,
-    Disasm
+    Disasm,
 }
 
 impl SelectedColumn {
-    pub fn to_i8(&self) -> i8 {
+    pub fn editable(&self) -> bool {
         match self {
-            Self::Function => 0,
-            Self::Hex => 1,
-            Self::Disasm => 2,
+            Self::Function => false,
+            Self::Hex | Self::Disasm => true
         }
     }
+}
 
-    pub fn from_i8(val: i8) -> SelectedColumn {
-        match ((val % 3) + 3) % 3 {
-            0 => Self::Function,
-            1 => Self::Hex,
-            2 => Self::Disasm,
-            _ => unreachable!()
-        }
-    }
+pub enum Mode {
+    Viewing,
+    Editing,
 }
 
 pub fn disasm(bytes: &[u8]) -> Vec<(Vec<u8>, String)> {
@@ -73,7 +67,10 @@ pub struct Application {
     pub disasm: HashMap<String, Vec<String>>,
     pub function_state: ListState,
     pub editor_state: ListState,
-    pub selected: SelectedColumn
+    pub selected: SelectedColumn,
+    pub mode: Mode,
+    pub cursor_index: isize,
+    pub column_width: isize
 }
 
 impl Application {
@@ -112,7 +109,10 @@ impl Application {
             disasm: disasm.into_iter().collect(),
             function_state: ListState::default(),
             editor_state: ListState::default(),
-            selected: SelectedColumn::Function
+            selected: SelectedColumn::Function,
+            mode: Mode::Viewing,
+            cursor_index: 0,
+            column_width: 0,
         }
     }
 
@@ -178,62 +178,33 @@ impl Application {
         &self.functions[self.function_state.selected().unwrap_or(0)]
     }
 
-
     pub fn next(&mut self) {
-        let current_func_name = self.get_current_function().name.clone();
-
-        let mut current_state = match self.selected {
-            SelectedColumn::Function => &mut self.function_state,
-            SelectedColumn::Hex | SelectedColumn::Disasm => &mut self.editor_state
-        };
-
-        let i = match current_state.selected() {
-            Some(i) => {
-                if i >= self.bytes.get(&current_func_name).map(|x| x.len()).unwrap_or(0) - 1 {
-                    0
-                } else {
-                    i + 1
-                }
-            }
-            None => 0,
-        };
-        current_state.select(Some(i));
+        self.mutate_selector(1)
     }
 
     pub fn previous(&mut self) {
+        self.mutate_selector(-1)
+    }
+
+    fn mutate_selector(&mut self, val: isize) {
         let current_func_name = self.get_current_function().name.clone();
+        let len = match self.selected {
+            SelectedColumn::Function => self.functions.len() as isize,
+            SelectedColumn::Hex | SelectedColumn::Disasm => self
+                .bytes
+                .get(&current_func_name)
+                .map(|x| x.len())
+                .unwrap_or(0) as isize,
+        };
         let mut current_state = match self.selected {
-            SelectedColumn::Function => &mut (self.function_state),
-            SelectedColumn::Hex | SelectedColumn::Disasm => &mut (self.editor_state)
+            SelectedColumn::Function => &mut self.function_state,
+            SelectedColumn::Hex | SelectedColumn::Disasm => &mut self.editor_state,
         };
 
-        let i = match current_state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.bytes.get(&current_func_name).map(|x| x.len()).unwrap_or(0) - 1
-                } else {
-                    i - 1
-                }
-            }
-            None => 0,
-        };
-        current_state.select(Some(i));
+        let next = (current_state.selected().unwrap_or(0) as isize + val).rem_euclid(len) as usize;
+
+        current_state.select(Some(next));
     }
 
-
-
-    pub fn next_col(&mut self) {
-        self.selected = SelectedColumn::from_i8(self.selected.to_i8() + 1)
-    }
-
-    pub fn previous_col(&mut self) {
-        self.selected = SelectedColumn::from_i8(self.selected.to_i8() - 1)
-
-    }
-
-
-    // pub fn unselect_function(&mut self) {
-    //     self.function_state.select(None);
-    // }
 
 }
