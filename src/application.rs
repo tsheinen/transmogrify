@@ -1,13 +1,16 @@
-use core::result::Result::Ok;
-use core::option::Option::{Some, None};
-use termion::event::Key;
-use crate::util::{SelectedColumn, Mode};
+use crate::util::{from_hexstring, Mode, SelectedColumn};
 use crate::{util, Function};
-use std::collections::HashMap;
-use tui::widgets::ListState;
+use core::option::Option::{None, Some};
+use core::result::Result::Ok;
 use r2pipe::{open_pipe, R2Pipe};
+use std::collections::HashMap;
+use std::io::{Seek, SeekFrom, Write};
+use std::path::PathBuf;
+use termion::event::Key;
+use tui::widgets::ListState;
 
 pub struct Application {
+    pub file: PathBuf,
     pub state: ListState,
     pub functions: Vec<Function>,
     pub bytes: HashMap<String, Vec<String>>,
@@ -23,7 +26,6 @@ pub struct Application {
 impl Application {
     pub fn new<P: AsRef<str>>(path: P) -> Self {
         // disassemble this with capstone
-
         let mut r2p = open_pipe!(Some(&path)).unwrap();
         r2p.cmd("aaa").unwrap();
         let x = r2p.cmd("aflj").unwrap();
@@ -55,6 +57,7 @@ impl Application {
             .unzip();
 
         Application {
+            file: PathBuf::from(path.as_ref()),
             state: ListState::default(),
             functions,
             bytes: bytes.into_iter().collect(),
@@ -93,11 +96,11 @@ impl Application {
             disasm_vec[i] = util::disassemble(&util::from_hexstring(&bytes[i]))
                 .first()
                 .map(|x| x.1.clone())
-                .unwrap_or_else(||"INVALID".to_string());
+                .unwrap_or_else(|| "INVALID".to_string());
         }
     }
 
-    pub fn rebuild_bytes(&mut self){
+    pub fn rebuild_bytes(&mut self) {
         let function = self.get_current_function().name.clone();
 
         let bytes = self
@@ -116,7 +119,11 @@ impl Application {
 
     pub fn values(&self, function: String) -> impl Iterator<Item = (String, String)> {
         let bytes = self.bytes.get(&function).cloned().unwrap_or_else(|| vec![]);
-        let disasm = self.disasm.get(&function).cloned().unwrap_or_else(||vec![]);
+        let disasm = self
+            .disasm
+            .get(&function)
+            .cloned()
+            .unwrap_or_else(|| vec![]);
         bytes.into_iter().zip(disasm.into_iter())
     }
 
@@ -206,4 +213,24 @@ impl Application {
             }
         }
     }
+
+    pub fn write(&self) -> Result<(), std::io::Error> {
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .open(self.file.as_path())?;
+        for function in &self.functions {
+            file.seek(SeekFrom::Start(function.offset as u64));
+            file.write(&self.bytes
+                .get(&function.name)
+                .map(|x| x.clone())
+                .unwrap_or_else(|| vec![])
+                .iter()
+                .map(|x| from_hexstring(x))
+                .map(|x| x.into_iter())
+                .flatten()
+                .collect::<Vec<u8>>());
+        }
+        Ok(())
+    }
 }
+

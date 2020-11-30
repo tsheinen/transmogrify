@@ -192,6 +192,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                     Key::Char('q') => {
                         break;
                     }
+                    Key::Char('w') => {
+                        app.write();
+                    }
                     Key::Char('a') => app.selected = SelectedColumn::Function,
                     Key::Char('s') => app.selected = SelectedColumn::Hex,
                     Key::Char('d') => app.selected = SelectedColumn::Disasm,
