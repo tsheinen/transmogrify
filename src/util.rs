@@ -40,7 +40,7 @@ pub fn disasm(bytes: &[u8]) -> Vec<(Vec<u8>, String)> {
         .iter()
         .map(|x| {
             (
-                x.bytes().iter().cloned().collect::<Vec<_>>(),
+                x.bytes().to_vec(),
                 format!(
                     "{} {}",
                     x.mnemonic().unwrap_or(""),
@@ -76,9 +76,7 @@ pub fn asm(instr: String) -> Result<Vec<u8>, keystone::Error> {
     engine
         .option(OptionType::SYNTAX, OptionValue::SYNTAX_NASM)
         .expect("Could not set option to nasm syntax");
-    let x = engine.asm(instr.clone(), 0x1000);
-    println!("{:#?}", &x);
-    x.map(|x| x.bytes)
+    engine.asm(instr, 0x1000).map(|x| x.bytes)
 }
 
 #[cfg(test)]

@@ -35,7 +35,9 @@ impl Application {
 
         let program = std::fs::read(path.as_ref()).unwrap();
 
-        let (bytes, disasm): (Vec<(String, Vec<String>)>, Vec<(String, Vec<String>)>) = functions
+        type InstructionPair = (String, Vec<String>);
+
+        let (bytes, disasm): (Vec<InstructionPair>, Vec<InstructionPair>) = functions
             .iter()
             .map(|function| {
                 let (bytes, disasm): (Vec<Vec<u8>>, Vec<String>) =
@@ -92,7 +94,7 @@ impl Application {
             disasm_vec[i] = util::disasm(&util::from_hexstring(bytes[i].clone()))
                 .first()
                 .map(|x| x.1.clone())
-                .unwrap_or(format!("ERROR"));
+                .unwrap_or_else(||"INVALID".to_string());
         }
         Ok(())
     }
@@ -119,8 +121,8 @@ impl Application {
     }
 
     pub fn values(&self, function: String) -> impl Iterator<Item = (String, String)> {
-        let bytes = self.bytes.get(&function).cloned().unwrap_or(vec![]);
-        let disasm = self.disasm.get(&function).cloned().unwrap_or(vec![]);
+        let bytes = self.bytes.get(&function).cloned().unwrap_or_else(|| vec![]);
+        let disasm = self.disasm.get(&function).cloned().unwrap_or_else(||vec![]);
         bytes.into_iter().zip(disasm.into_iter())
     }
 
