@@ -5,6 +5,7 @@ use r2pipe::{open_pipe, R2Pipe};
 use std::collections::HashMap;
 use termion::event::Key;
 use tui::widgets::ListState;
+use keystone::OptionValue;
 
 pub enum SelectedColumn {
     Function,
@@ -67,14 +68,15 @@ pub fn from_hexstring(str: String) -> Vec<u8> {
 }
 
 pub fn asm(instr: String) -> Result<Vec<u8>, keystone::Error> {
+
     use keystone::{Arch, Keystone, OptionType};
 
     let engine =
-        Keystone::new(Arch::X86, keystone::MODE_64).expect("Could not initialize Keystone engine");
+        Keystone::new(Arch::X86, keystone::Mode::LITTLE_ENDIAN | keystone::Mode::MODE_64).expect("Could not initialize Keystone engine");
     engine
-        .option(OptionType::SYNTAX, keystone::OPT_SYNTAX_NASM)
+        .option(OptionType::SYNTAX, OptionValue::SYNTAX_NASM)
         .expect("Could not set option to nasm syntax");
-    let x = engine.asm(instr.clone(), 0);
+    let x = engine.asm(instr.clone(), 0x1000);
     println!("{:#?}", &x);
     x.map(|x| x.bytes)
 }
@@ -183,7 +185,7 @@ impl Application {
             .get_mut(&function)
             .ok_or("function doesn't exist")?;
         for i in 0..bytes.len() {
-            eprintln!("assembling = {:?}",disasm[i].clone());
+            eprintln!("assembling = {:?}", disasm[i].clone());
             eprintln!("asm = {:?}", &asm(disasm[i].clone()).expect("asm to work"));
             bytes[i] = to_hexstring(&asm(disasm[i].clone()).expect("asm to work"));
         }
@@ -290,8 +292,6 @@ mod tests {
 
     #[test]
     fn test_assembles() {
-
         assert_eq!(vec![0x55], asm("push rbp".to_string()).unwrap());
     }
-
 }
