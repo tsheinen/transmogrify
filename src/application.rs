@@ -146,7 +146,7 @@ impl Application {
                 .map(|x| x.len())
                 .unwrap_or(0) as isize,
         };
-        let mut current_state = match self.selected {
+        let current_state = match self.selected {
             SelectedColumn::Function => &mut self.function_state,
             SelectedColumn::Hex | SelectedColumn::Disasm => &mut self.editor_state,
         };

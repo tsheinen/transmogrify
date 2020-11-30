@@ -1,10 +1,10 @@
-use crate::{get_functions, Function};
+
 use capstone::prelude::*;
-use capstone::{Capstone, Insn};
-use r2pipe::{open_pipe, R2Pipe};
-use std::collections::HashMap;
-use termion::event::Key;
-use tui::widgets::ListState;
+use capstone::{Capstone};
+
+
+
+
 use keystone::OptionValue;
 
 pub enum SelectedColumn {

@@ -4,13 +4,12 @@ mod application;
 
 use crate::event::{Event, Events};
 use crate::util::{Mode, SelectedColumn};
-use capstone::prelude::*;
-use capstone::Capstone;
+
 use r2pipe::{open_pipe, R2Pipe};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::io;
-use std::path::Path;
+
 use termion::event::Key;
 use termion::input::MouseTerminal;
 use termion::raw::IntoRawMode;
@@ -18,8 +17,8 @@ use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::{Color, Modifier, Style};
-use tui::text::{Span, Spans};
-use tui::widgets::{Block, Borders, List, ListItem, ListState};
+use tui::text::{Spans};
+use tui::widgets::{Block, Borders, List, ListItem};
 use tui::Terminal;
 use crate::application::Application;
 
@@ -43,7 +42,7 @@ struct Instruction {
 }
 
 fn get_functions<P: AsRef<str>>(program: P) -> Vec<Function> {
-    /// using r2 so we can pull functions from stripped binaries -- is there a better way to do this?
+    // using r2 so we can pull functions from stripped binaries -- is there a better way to do this?
     let mut r2p = open_pipe!(Some(program)).unwrap();
     r2p.cmd("aaa").unwrap();
     let x = r2p.cmd("aflj").unwrap();
@@ -57,11 +56,11 @@ fn get_functions<P: AsRef<str>>(program: P) -> Vec<Function> {
 fn main() -> Result<(), Box<dyn Error>> {
     let program_name = "./a.out";
 
-    let program = std::fs::read(program_name).unwrap();
+    let _program = std::fs::read(program_name).unwrap();
 
     let functions = get_functions(program_name);
 
-    let function_names = functions.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
+    let _function_names = functions.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
 
     // Terminal initialization
     let stdout = io::stdout().into_raw_mode()?;
@@ -80,7 +79,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     loop {
         terminal.draw(|f| {
-            let (functions, hex, disasm_view, bar) = {
+            let (functions, hex, disasm_view, _bar) = {
                 let vchunks = Layout::default()
                     .direction(Direction::Vertical)
                     .margin(0)
@@ -105,7 +104,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .functions
                     .iter()
                     .map(|i| {
-                        let mut lines = vec![Spans::from(i.name.as_ref())];
+                        let lines = vec![Spans::from(i.name.as_ref())];
                         ListItem::new(lines).style(Style::default().fg(Color::White))
                     })
                     .collect();
@@ -151,7 +150,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let items: Vec<ListItem> = hex_bytes
                     .iter()
                     .map(|i| {
-                        let mut lines = vec![Spans::from(i.as_ref())];
+                        let lines = vec![Spans::from(i.as_ref())];
                         ListItem::new(lines).style(Style::default().fg(Color::White))
                     })
                     .collect();
@@ -170,7 +169,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let items: Vec<ListItem> = disasm
                     .iter()
                     .map(|i| {
-                        let mut lines = vec![Spans::from(i.as_ref())];
+                        let lines = vec![Spans::from(i.as_ref())];
                         ListItem::new(lines).style(Style::default().fg(Color::White))
                     })
                     .collect();
@@ -216,7 +215,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                             }
                             _ => {}
                         },
-                        _ => {}
                     },
                 },
                 Mode::Editing => match input {
