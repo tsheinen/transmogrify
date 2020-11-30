@@ -564,6 +564,7 @@ dependencies = [
 [[package]]
 name = "keystone"
 version = "0.9.2"
+source = "git+https://github.com/keystone-engine/keystone#e1547852d9accb9460573eb156fc81645b8e1871"
 dependencies = [
  "keystone-sys",
  "libc",
@@ -572,6 +573,7 @@ dependencies = [
 [[package]]
 name = "keystone-sys"
 version = "0.9.2"
+source = "git+https://github.com/keystone-engine/keystone#e1547852d9accb9460573eb156fc81645b8e1871"
 dependencies = [
  "bitflags",
  "cmake",
