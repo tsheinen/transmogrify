@@ -1,15 +1,17 @@
+mod application;
 mod event;
 mod util;
-mod application;
 
 use crate::event::{Event, Events};
 use crate::util::{Mode, SelectedColumn};
 
+use crate::application::Application;
 use r2pipe::{open_pipe, R2Pipe};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::io;
-
+use std::path::PathBuf;
+use structopt::StructOpt;
 use termion::event::Key;
 use termion::input::MouseTerminal;
 use termion::raw::IntoRawMode;
@@ -17,10 +19,16 @@ use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::{Color, Modifier, Style};
-use tui::text::{Spans};
+use tui::text::Spans;
 use tui::widgets::{Block, Borders, List, ListItem};
 use tui::Terminal;
-use crate::application::Application;
+
+#[derive(StructOpt, Debug)]
+#[structopt(about, author)]
+struct Opt {
+    #[structopt(name = "FILE", parse(from_os_str))]
+    file: PathBuf,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Function {
@@ -54,13 +62,7 @@ fn get_functions<P: AsRef<str>>(program: P) -> Vec<Function> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let program_name = "./a.out";
-
-    let _program = std::fs::read(program_name).unwrap();
-
-    let functions = get_functions(program_name);
-
-    let _function_names = functions.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
+    let opt = Opt::from_args();
 
     // Terminal initialization
     let stdout = io::stdout().into_raw_mode()?;
@@ -73,7 +75,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // App
 
-    let mut app = Application::new(program_name);
+    let mut app = Application::new(opt.file.to_string_lossy());
     app.editor_state.select(Some(0));
     app.function_state.select(Some(0));
 
