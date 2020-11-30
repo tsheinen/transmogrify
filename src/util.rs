@@ -3,6 +3,7 @@ use capstone::prelude::*;
 use capstone::{Capstone, Insn};
 use r2pipe::{open_pipe, R2Pipe};
 use std::collections::HashMap;
+use termion::event::Key;
 use tui::widgets::ListState;
 
 pub enum SelectedColumn {
@@ -145,31 +146,31 @@ impl Application {
         }
     }
 
-    pub fn set_bytes(&mut self, function: String, i: usize, data: Vec<u8>) -> Result<(), String> {
+    pub fn rebuild_asm(&mut self) -> Result<(), String> {
         // set bytes and update disassembly, return error if an instruction can't be found
-        let bytes_data = self
+        let function = self.get_current_function().name.clone();
+
+        let bytes = self
             .bytes
             .get_mut(&function)
             .ok_or("function doesn't exist")?;
-        let disasm_data = self
+        let disasm_vec = self
             .disasm
             .get_mut(&function)
             .ok_or("function doesn't exist")?;
-        if i < bytes_data.len() {
-            let (bytes, instr) = disasm(&data)
+        for i in 0..bytes.len() {
+            disasm_vec[i] = disasm(&from_hexstring(bytes[i].clone()))
                 .first()
-                .cloned()
-                .ok_or(format!("No instructions found"))?;
-            bytes_data[i] = to_hexstring(&bytes);
-            disasm_data[i] = instr.clone();
-            Ok(())
-        } else {
-            Err(format!("i outside of range"))
+                .map(|x| x.1.clone())
+                .unwrap_or(format!("ERROR"));
         }
+        Ok(())
     }
 
-    pub fn set_asm(&mut self, function: String, i: usize, data: String) -> Result<(), String> {
+    pub fn rebuild_bytes(&mut self) -> Result<(), String> {
         // set disasm and assemble (keystone maybe?), return error if it can't be assembled
+        let function = self.get_current_function().name.clone();
+
         let bytes = self
             .bytes
             .get_mut(&function)
@@ -178,13 +179,10 @@ impl Application {
             .disasm
             .get_mut(&function)
             .ok_or("function doesn't exist")?;
-        if i < bytes.len() {
-            bytes[i] = to_hexstring(&asm(data.clone()).expect("asm to work"));
-            disasm[i] = data;
-            Ok(())
-        } else {
-            Err(format!("i outside of range"))
+        for i in 0..bytes.len() {
+            bytes[i] = to_hexstring(&asm(disasm[i].clone()).expect("asm to work"));
         }
+        Ok(())
     }
 
     pub fn values(&self, function: String) -> impl Iterator<Item = (String, String)> {
@@ -223,5 +221,60 @@ impl Application {
         let next = (current_state.selected().unwrap_or(0) as isize + val).rem_euclid(len) as usize;
 
         current_state.select(Some(next));
+    }
+
+    pub fn apply_key(&mut self, key: Key) {
+        let current_func_name = self.get_current_function().name.clone();
+
+        let current_state = match self.selected {
+            SelectedColumn::Function => &mut self.function_state,
+            SelectedColumn::Hex | SelectedColumn::Disasm => &mut self.editor_state,
+        }
+        .selected()
+        .unwrap_or(0);
+
+        let mut empty: Vec<String> = vec![];
+
+        let current_str = match self.selected {
+            SelectedColumn::Hex => {
+                &mut self.bytes.get_mut(&current_func_name).unwrap_or(&mut empty)[current_state]
+            }
+            SelectedColumn::Disasm => &mut self
+                .disasm
+                .get_mut(&current_func_name)
+                .unwrap_or(&mut empty)[current_state],
+            _ => panic!(
+                "trying to edit on a col which should never happen, means my logic is broken"
+            ),
+        };
+
+        match key {
+            Key::Char(c) => {
+                current_str.insert(self.cursor_index as usize, c);
+                self.cursor_index += 1;
+            }
+            Key::Delete => {
+                current_str.remove(self.cursor_index as usize);
+            }
+            Key::Backspace if self.cursor_index > 0 => {
+                current_str.remove(self.cursor_index as usize - 1);
+                self.cursor_index -= 1;
+            }
+            _ => {}
+        };
+    }
+
+    pub fn rebuild(&mut self) {
+        match self.selected {
+            SelectedColumn::Hex => {
+                self.rebuild_asm();
+            }
+            SelectedColumn::Disasm => {
+                self.rebuild_bytes();
+            }
+            SelectedColumn::Function => {
+                panic!("should never call rebuild when current column is function");
+            }
+        }
     }
 }

@@ -137,18 +137,15 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
 
             {
-                let hex_bytes = app
-                    .bytes
-                    .get(&func.name)
-                    .unwrap();
-                    // .iter()
-                    // .map(|x| {
-                    //     x.iter()
-                    //         .map(|y| format!("{:x}", y))
-                    //         .collect::<Vec<_>>()
-                    //         .join(" ")
-                    // })
-                    // .collect::<Vec<_>>();
+                let hex_bytes = app.bytes.get(&func.name).unwrap();
+                // .iter()
+                // .map(|x| {
+                //     x.iter()
+                //         .map(|y| format!("{:x}", y))
+                //         .collect::<Vec<_>>()
+                //         .join(" ")
+                // })
+                // .collect::<Vec<_>>();
                 let items: Vec<ListItem> = hex_bytes
                     .iter()
                     .map(|i| {
@@ -184,7 +181,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                     );
                 f.render_widget(items, disasm_view);
             }
-
         })?;
 
         match events.next()? {
@@ -222,7 +218,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                     },
                 },
                 Mode::Editing => match input {
-                    Key::Esc => app.mode = Mode::Viewing,
+                    Key::Esc => {
+                        app.mode = Mode::Viewing;
+                        app.rebuild();
+                    }
                     _ if app.selected.editable() => match input {
                         Key::Left => {
                             let len = app.column_width;
@@ -232,6 +231,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             let len = app.column_width;
                             app.cursor_index = (((app.cursor_index + 1) % len) + len) % len;
                         }
+                        Key::Char(_) | Key::Delete | Key::Backspace => app.apply_key(input),
                         _ => {}
                     },
                     _ => {}
