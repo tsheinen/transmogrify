@@ -2,7 +2,7 @@ mod event;
 mod util;
 
 use crate::event::{Event, Events};
-use crate::util::{ByteList, StatefulList};
+use crate::util::{Application, StatefulList};
 use capstone::prelude::*;
 use capstone::Capstone;
 use r2pipe::{open_pipe, R2Pipe};
@@ -22,7 +22,7 @@ use tui::widgets::{Block, Borders, List, ListItem, ListState};
 use tui::Terminal;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct Function {
+pub struct Function {
     name: String,
     offset: usize,
     size: usize,
@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // App
 
-    let byte_list = ByteList::new(program_name);
+    let byte_list = Application::new(program_name);
 
     let mut function_list_state = StatefulList::with_items(function_names);
 

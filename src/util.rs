@@ -1,8 +1,9 @@
-use crate::get_functions;
+use crate::{get_functions, Function};
 use capstone::prelude::*;
 use capstone::{Capstone, Insn};
 use std::collections::HashMap;
 use tui::widgets::ListState;
+use r2pipe::{open_pipe, R2Pipe};
 
 pub struct StatefulList<T> {
     pub state: ListState,
@@ -92,17 +93,26 @@ pub fn asm(instr: String) -> Result<Vec<u8>, keystone::Error> {
     engine.asm(instr, 0).map(|x| x.bytes)
 }
 
-pub struct ByteList {
+pub struct Application {
     pub state: ListState,
+    pub functions: Vec<Function>,
     pub bytes: HashMap<String, Vec<Vec<u8>>>,
     pub disasm: HashMap<String, Vec<String>>,
 }
 
-impl ByteList {
+impl Application {
     pub fn new<P: AsRef<str>>(path: P) -> Self {
         // disassemble this with capstone
 
-        let functions = get_functions(&path);
+        let mut r2p = open_pipe!(Some(&path)).unwrap();
+        r2p.cmd("aaa").unwrap();
+        let x = r2p.cmd("aflj").unwrap();
+        let functions = if let Ok(json) = serde_json::from_str::<Vec<Function>>(&x) {
+            json
+        } else {
+            vec![]
+        };
+
         let program = std::fs::read(path.as_ref()).unwrap();
 
         let (bytes, disasm): (Vec<(String, Vec<Vec<u8>>)>, Vec<(String, Vec<String>)>) = functions
@@ -119,8 +129,9 @@ impl ByteList {
             })
             .unzip();
 
-        ByteList {
+        Application {
             state: ListState::default(),
+            functions,
             bytes: bytes.into_iter().collect(),
             disasm: disasm.into_iter().collect(),
         }
