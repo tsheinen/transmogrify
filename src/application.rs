@@ -41,7 +41,7 @@ impl Application {
             .iter()
             .map(|function| {
                 let (bytes, disasm): (Vec<Vec<u8>>, Vec<String>) =
-                    util::disasm(&program[function.offset..function.offset + function.size])
+                    util::disassemble(&program[function.offset..function.offset + function.size])
                         .into_iter()
                         .unzip();
                 (
@@ -78,46 +78,40 @@ impl Application {
         }
     }
 
-    pub fn rebuild_asm(&mut self) -> Result<(), String> {
-        // set bytes and update disassembly, return error if an instruction can't be found
+    pub fn rebuild_asm(&mut self) {
         let function = self.get_current_function().name.clone();
 
         let bytes = self
             .bytes
             .get_mut(&function)
-            .ok_or("function doesn't exist")?;
+            .expect("current function doesn't exist in map?");
         let disasm_vec = self
             .disasm
             .get_mut(&function)
-            .ok_or("function doesn't exist")?;
+            .expect("current function doesn't exist in map?");
         for i in 0..bytes.len() {
-            disasm_vec[i] = util::disasm(&util::from_hexstring(bytes[i].clone()))
+            disasm_vec[i] = util::disassemble(&util::from_hexstring(bytes[i].clone()))
                 .first()
                 .map(|x| x.1.clone())
                 .unwrap_or_else(||"INVALID".to_string());
         }
-        Ok(())
     }
 
-    pub fn rebuild_bytes(&mut self) -> Result<(), String> {
-        eprintln!("rebuilding bytes....");
-        // set disasm and assemble (keystone maybe?), return error if it can't be assembled
+    pub fn rebuild_bytes(&mut self){
         let function = self.get_current_function().name.clone();
 
         let bytes = self
             .bytes
             .get_mut(&function)
-            .ok_or("function doesn't exist")?;
+            .expect("current function doesn't exist in map?");
         let disasm = self
             .disasm
             .get_mut(&function)
-            .ok_or("function doesn't exist")?;
+            .expect("current function doesn't exist in map?");
         for i in 0..bytes.len() {
-            eprintln!("assembling = {:?}", disasm[i].clone());
-            eprintln!("asm = {:?}", &util::asm(disasm[i].clone()).expect("asm to work"));
-            bytes[i] = util::to_hexstring(&util::asm(disasm[i].clone()).expect("asm to work"));
+            // TODO if the assembly is invalid we should handle that.  prob leave it alone?
+            bytes[i] = util::to_hexstring(&util::assemble(disasm[i].clone()).expect("asm to work"));
         }
-        Ok(())
     }
 
     pub fn values(&self, function: String) -> impl Iterator<Item = (String, String)> {

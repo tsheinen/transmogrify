@@ -1,9 +1,5 @@
-
 use capstone::prelude::*;
-use capstone::{Capstone};
-
-
-
+use capstone::Capstone;
 
 use keystone::OptionValue;
 
@@ -27,7 +23,19 @@ pub enum Mode {
     Editing,
 }
 
-pub fn disasm(bytes: &[u8]) -> Vec<(Vec<u8>, String)> {
+pub fn assemble(instr: String) -> Result<Vec<u8>, keystone::Error> {
+    use keystone::{Arch, Keystone, OptionType};
+
+    let engine = Keystone::new(
+        Arch::X86,
+        keystone::Mode::LITTLE_ENDIAN | keystone::Mode::MODE_64,
+    )?;
+    engine.option(OptionType::SYNTAX, OptionValue::SYNTAX_NASM)?;
+    engine.asm(instr, 0x1000).map(|x| x.bytes)
+}
+
+
+pub fn disassemble(bytes: &[u8]) -> Vec<(Vec<u8>, String)> {
     let cs = Capstone::new()
         .x86()
         .mode(arch::x86::ArchMode::Mode64)
@@ -67,17 +75,6 @@ pub fn from_hexstring(str: String) -> Vec<u8> {
         .collect()
 }
 
-pub fn asm(instr: String) -> Result<Vec<u8>, keystone::Error> {
-
-    use keystone::{Arch, Keystone, OptionType};
-
-    let engine =
-        Keystone::new(Arch::X86, keystone::Mode::LITTLE_ENDIAN | keystone::Mode::MODE_64).expect("Could not initialize Keystone engine");
-    engine
-        .option(OptionType::SYNTAX, OptionValue::SYNTAX_NASM)
-        .expect("Could not set option to nasm syntax");
-    engine.asm(instr, 0x1000).map(|x| x.bytes)
-}
 
 #[cfg(test)]
 mod tests {
@@ -85,6 +82,6 @@ mod tests {
 
     #[test]
     fn test_assembles() {
-        assert_eq!(vec![0x55], asm("push rbp".to_string()).unwrap());
+        assert_eq!(vec![0x55], assemble("push rbp".to_string()).unwrap());
     }
 }
