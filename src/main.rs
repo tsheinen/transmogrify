@@ -140,15 +140,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let hex_bytes = app
                     .bytes
                     .get(&func.name)
-                    .unwrap()
-                    .iter()
-                    .map(|x| {
-                        x.iter()
-                            .map(|y| format!("{:x}", y))
-                            .collect::<Vec<_>>()
-                            .join(" ")
-                    })
-                    .collect::<Vec<_>>();
+                    .unwrap();
+                    // .iter()
+                    // .map(|x| {
+                    //     x.iter()
+                    //         .map(|y| format!("{:x}", y))
+                    //         .collect::<Vec<_>>()
+                    //         .join(" ")
+                    // })
+                    // .collect::<Vec<_>>();
                 let items: Vec<ListItem> = hex_bytes
                     .iter()
                     .map(|i| {

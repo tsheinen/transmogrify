@@ -15,7 +15,7 @@ impl SelectedColumn {
     pub fn editable(&self) -> bool {
         match self {
             Self::Function => false,
-            Self::Hex | Self::Disasm => true
+            Self::Hex | Self::Disasm => true,
         }
     }
 }
@@ -29,7 +29,7 @@ pub fn disasm(bytes: &[u8]) -> Vec<(Vec<u8>, String)> {
     let cs = Capstone::new()
         .x86()
         .mode(arch::x86::ArchMode::Mode64)
-        .syntax(arch::x86::ArchSyntax::Att)
+        .syntax(arch::x86::ArchSyntax::Intel)
         .detail(true)
         .build()
         .expect("failed to create capstone object");
@@ -49,6 +49,22 @@ pub fn disasm(bytes: &[u8]) -> Vec<(Vec<u8>, String)> {
         .collect()
 }
 
+pub fn to_hexstring(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .map(|x| format!("{:02x}", x))
+        .collect::<Vec<String>>()
+        .join(" ")
+}
+pub fn from_hexstring(str: String) -> Vec<u8> {
+    str.chars()
+        .filter(|x| *x != ' ')
+        .collect::<Vec<_>>()
+        .chunks(2)
+        .map(|x| x.iter().collect::<String>().parse::<u8>().unwrap_or(0))
+        .collect()
+}
+
 pub fn asm(instr: String) -> Result<Vec<u8>, keystone::Error> {
     use keystone::{Arch, Keystone, OptionType};
 
@@ -63,14 +79,14 @@ pub fn asm(instr: String) -> Result<Vec<u8>, keystone::Error> {
 pub struct Application {
     pub state: ListState,
     pub functions: Vec<Function>,
-    pub bytes: HashMap<String, Vec<Vec<u8>>>,
+    pub bytes: HashMap<String, Vec<String>>,
     pub disasm: HashMap<String, Vec<String>>,
     pub function_state: ListState,
     pub editor_state: ListState,
     pub selected: SelectedColumn,
     pub mode: Mode,
     pub cursor_index: isize,
-    pub column_width: isize
+    pub column_width: isize,
 }
 
 impl Application {
@@ -88,7 +104,7 @@ impl Application {
 
         let program = std::fs::read(path.as_ref()).unwrap();
 
-        let (bytes, disasm): (Vec<(String, Vec<Vec<u8>>)>, Vec<(String, Vec<String>)>) = functions
+        let (bytes, disasm): (Vec<(String, Vec<String>)>, Vec<(String, Vec<String>)>) = functions
             .iter()
             .map(|function| {
                 let (bytes, disasm): (Vec<Vec<u8>>, Vec<String>) =
@@ -96,7 +112,10 @@ impl Application {
                         .into_iter()
                         .unzip();
                 (
-                    (function.name.clone(), bytes),
+                    (
+                        function.name.clone(),
+                        bytes.iter().map(|x| to_hexstring(x)).collect(),
+                    ),
                     (function.name.clone(), disasm),
                 )
             })
@@ -116,7 +135,7 @@ impl Application {
         }
     }
 
-    pub fn get(&self, function: String, i: usize) -> Option<(&Vec<u8>, &String)> {
+    pub fn get(&self, function: String, i: usize) -> Option<(&String, &String)> {
         if i < self.bytes.len() && self.bytes.contains_key(&function) {
             let bytes = self.bytes.get(&function).unwrap();
             let disasm = self.disasm.get(&function).unwrap();
@@ -141,7 +160,7 @@ impl Application {
                 .first()
                 .cloned()
                 .ok_or(format!("No instructions found"))?;
-            bytes_data[i] = bytes.clone();
+            bytes_data[i] = to_hexstring(&bytes);
             disasm_data[i] = instr.clone();
             Ok(())
         } else {
@@ -160,7 +179,7 @@ impl Application {
             .get_mut(&function)
             .ok_or("function doesn't exist")?;
         if i < bytes.len() {
-            bytes[i] = asm(data.clone()).expect("asm to work");
+            bytes[i] = to_hexstring(&asm(data.clone()).expect("asm to work"));
             disasm[i] = data;
             Ok(())
         } else {
@@ -168,7 +187,7 @@ impl Application {
         }
     }
 
-    pub fn values(&self, function: String) -> impl Iterator<Item = (Vec<u8>, String)> {
+    pub fn values(&self, function: String) -> impl Iterator<Item = (String, String)> {
         let bytes = self.bytes.get(&function).cloned().unwrap_or(vec![]);
         let disasm = self.disasm.get(&function).cloned().unwrap_or(vec![]);
         bytes.into_iter().zip(disasm.into_iter())
@@ -205,6 +224,4 @@ impl Application {
 
         current_state.select(Some(next));
     }
-
-
 }
