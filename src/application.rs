@@ -29,11 +29,7 @@ impl Application {
         let mut r2p = open_pipe!(Some(&path)).unwrap();
         r2p.cmd("aaa").unwrap();
         let x = r2p.cmd("aflj").unwrap();
-        let functions = if let Ok(json) = serde_json::from_str::<Vec<Function>>(&x) {
-            json
-        } else {
-            vec![]
-        };
+        let functions = serde_json::from_str::<Vec<Function>>(&x).unwrap_or_else(|_| vec![]);
 
         let program = std::fs::read(path.as_ref()).unwrap();
 
@@ -232,5 +228,7 @@ impl Application {
         }
         Ok(())
     }
+
+
 }
 
