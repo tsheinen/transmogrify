@@ -243,7 +243,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Mode::Editing => match input {
                     Key::Esc => {
                         app.mode = Mode::Viewing;
-                        app.rebuild();
                     }
                     _ if app.selected.editable() => match input {
                         Key::Char(_) | Key::Delete | Key::Backspace => app.apply_key(input),
@@ -253,7 +252,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                 },
             },
 
-            Event::Tick => {}
+            Event::Tick => {
+                {
+                    let editable = app.selected.editable();
+                    if editable {
+                        app.rebuild();
+                    }
+                }
+            }
         }
     }
 
