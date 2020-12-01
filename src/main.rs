@@ -190,7 +190,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     Key::Char('a') => app.selected = SelectedColumn::Function,
                     Key::Char('s') => app.selected = SelectedColumn::Hex,
                     Key::Char('d') => app.selected = SelectedColumn::Disasm,
-                    Key::Char('e') => app.mode = Mode::Editing,
+                    Key::Char('e') if app.selected != SelectedColumn::Function => app.mode = Mode::Editing,
                     _ => match app.selected {
                         SelectedColumn::Function => match input {
                             Key::Down => {

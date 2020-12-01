@@ -3,6 +3,7 @@ use capstone::Capstone;
 
 use keystone::OptionValue;
 
+#[derive(Eq, PartialEq)]
 pub enum SelectedColumn {
     Function,
     Hex,
