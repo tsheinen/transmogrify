@@ -190,7 +190,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                     Key::Char('a') => app.selected = SelectedColumn::Function,
                     Key::Char('s') => app.selected = SelectedColumn::Hex,
                     Key::Char('d') => app.selected = SelectedColumn::Disasm,
-                    Key::Char('e') if app.selected != SelectedColumn::Function => app.mode = Mode::Editing,
+                    Key::Char('e') if app.selected != SelectedColumn::Function => {
+                        app.mode = Mode::Editing
+                    }
                     _ => match app.selected {
                         SelectedColumn::Function => match input {
                             Key::Down => {
@@ -210,6 +212,30 @@ fn main() -> Result<(), Box<dyn Error>> {
                             Key::Up => {
                                 app.previous();
                             }
+                            Key::Left => {
+                                let selected = app.editor_state.selected().unwrap_or(0);
+                                let len =
+                                    app.get(app.get_current_function().clone().name, selected)
+                                        .map(|x| match app.selected {
+                                            SelectedColumn::Disasm => x.1.len(),
+                                            SelectedColumn::Hex => x.0.len(),
+                                            _ => 0,
+                                        })
+                                        .unwrap_or(0) as isize;
+                                app.cursor_index = (((app.cursor_index - 1) % len) + len) % len;
+                            }
+                            Key::Right => {
+                                let selected = app.editor_state.selected().unwrap_or(0);
+                                let len =
+                                    app.get(app.get_current_function().clone().name, selected)
+                                        .map(|x| match app.selected {
+                                            SelectedColumn::Disasm => x.1.len(),
+                                            SelectedColumn::Hex => x.0.len(),
+                                            _ => 0,
+                                        })
+                                        .unwrap_or(0) as isize;
+                                app.cursor_index = (((app.cursor_index + 1) % len) + len) % len;
+                            }
                             _ => {}
                         },
                     },
@@ -220,30 +246,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                         app.rebuild();
                     }
                     _ if app.selected.editable() => match input {
-                        Key::Left => {
-                            let selected = app.editor_state.selected().unwrap_or(0);
-                            let len = app
-                                .get(app.get_current_function().clone().name, selected)
-                                .map(|x| match app.selected {
-                                    SelectedColumn::Disasm => x.1.len(),
-                                    SelectedColumn::Hex => x.0.len(),
-                                    _ => 0,
-                                })
-                                .unwrap_or(0) as isize;
-                            app.cursor_index = (((app.cursor_index - 1) % len) + len) % len;
-                        }
-                        Key::Right => {
-                            let selected = app.editor_state.selected().unwrap_or(0);
-                            let len = app
-                                .get(app.get_current_function().clone().name, selected)
-                                .map(|x| match app.selected {
-                                    SelectedColumn::Disasm => x.1.len(),
-                                    SelectedColumn::Hex => x.0.len(),
-                                    _ => 0,
-                                })
-                                .unwrap_or(0) as isize;
-                            app.cursor_index = (((app.cursor_index + 1) % len) + len) % len;
-                        }
                         Key::Char(_) | Key::Delete | Key::Backspace => app.apply_key(input),
                         _ => {}
                     },
