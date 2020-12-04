@@ -126,13 +126,13 @@ fn main() -> Result<(), Box<dyn Error>> {
             match app.selected {
                 SelectedColumn::Hex => {
                     f.set_cursor(
-                        hex.x + app.cursor_index as u16 + 1,
+                        hex.x + app.get_cursor() as u16 + 1,
                         hex.y + 1u16 + app.editor_state.selected().unwrap_or(0) as u16,
                     );
                 }
                 SelectedColumn::Disasm => {
                     f.set_cursor(
-                        disasm_view.x + app.cursor_index as u16 + 1,
+                        disasm_view.x + app.get_cursor() as u16 + 1,
                         disasm_view.y + 1u16 + app.editor_state.selected().unwrap_or(0) as u16,
                     );
                 }
@@ -187,9 +187,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                     Key::Char('w') => {
                         app.write();
                     }
-                    Key::Char('a') => app.selected = SelectedColumn::Function,
-                    Key::Char('s') => app.selected = SelectedColumn::Hex,
-                    Key::Char('d') => app.selected = SelectedColumn::Disasm,
+                    Key::Char('a') => app.select(SelectedColumn::Function),
+                    Key::Char('s') => app.select(SelectedColumn::Hex),
+                    Key::Char('d') => app.select(SelectedColumn::Disasm),
                     Key::Char('e') if app.selected != SelectedColumn::Function => {
                         app.mode = Mode::Editing
                     }
@@ -213,28 +213,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                                 app.previous();
                             }
                             Key::Left => {
-                                let selected = app.editor_state.selected().unwrap_or(0);
-                                let len =
-                                    app.get(app.get_current_function().clone().name, selected)
-                                        .map(|x| match app.selected {
-                                            SelectedColumn::Disasm => x.1.len(),
-                                            SelectedColumn::Hex => x.0.len(),
-                                            _ => 0,
-                                        })
-                                        .unwrap_or(0) as isize;
-                                app.cursor_index = (((app.cursor_index - 1) % len) + len) % len;
+                                app.set_cursor(app.get_cursor() - 1)
                             }
                             Key::Right => {
-                                let selected = app.editor_state.selected().unwrap_or(0);
-                                let len =
-                                    app.get(app.get_current_function().clone().name, selected)
-                                        .map(|x| match app.selected {
-                                            SelectedColumn::Disasm => x.1.len(),
-                                            SelectedColumn::Hex => x.0.len(),
-                                            _ => 0,
-                                        })
-                                        .unwrap_or(0) as isize;
-                                app.cursor_index = (((app.cursor_index + 1) % len) + len) % len;
+                                app.set_cursor(app.get_cursor() + 1)
                             }
                             _ => {}
                         },

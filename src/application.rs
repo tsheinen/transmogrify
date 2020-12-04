@@ -19,7 +19,7 @@ pub struct Application {
     pub editor_state: ListState,
     pub selected: SelectedColumn,
     pub mode: Mode,
-    pub cursor_index: isize,
+    cursor_index: isize,
     pub column_width: isize,
 }
 
@@ -229,6 +229,29 @@ impl Application {
         Ok(())
     }
 
+
+    pub fn select(&mut self, column: SelectedColumn) {
+        self.selected = column;
+        self.cursor_index = 0;
+    }
+
+
+    pub fn get_cursor(&self) -> isize {
+        self.cursor_index
+    }
+
+    pub fn set_cursor(&mut self, cursor: isize) {
+        let len =
+            self.get(self.get_current_function().clone().name, self.editor_state.selected().unwrap_or(0))
+                .map(|x| match self.selected {
+                    SelectedColumn::Disasm => x.1.len(),
+                    SelectedColumn::Hex => x.0.len(),
+                    _ => 0,
+                })
+                .unwrap_or(0) as isize;
+        eprintln!("{}", cursor);
+        self.cursor_index = ((cursor % len) + len) % len;
+    }
 
 }
 
