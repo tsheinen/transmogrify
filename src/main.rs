@@ -20,7 +20,7 @@ use tui::backend::TermionBackend;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::{Color, Modifier, Style};
 use tui::text::Spans;
-use tui::widgets::{Block, Borders, List, ListItem};
+use tui::widgets::{Block, Borders, List, ListItem, Paragraph};
 use tui::Terminal;
 
 #[derive(StructOpt, Debug)]
@@ -79,13 +79,26 @@ fn main() -> Result<(), Box<dyn Error>> {
     app.editor_state.select(Some(0));
     app.function_state.select(Some(0));
 
+
     loop {
         terminal.draw(|f| {
+
+
+            // this solves for the correct proportions of the bar/main in a responsive way
+            let (main_size, bar_size) = {
+                let (_, rows) = termion::terminal_size().unwrap_or((0,0));
+                let (_, rows_px) = termion::terminal_size_pixels().unwrap_or((0,0));
+                let rows_px = rows_px as f32;
+                let rows = rows as f32;
+                let bar_size = 1f32 * (rows_px / rows) as f32;
+                (((rows_px - bar_size) / rows_px * 100f32) as u16, (bar_size / rows_px * 100f32) as u16)
+            };
+
             let (functions, hex, disasm_view, _bar) = {
                 let vchunks = Layout::default()
                     .direction(Direction::Vertical)
                     .margin(0)
-                    .constraints([Constraint::Percentage(95), Constraint::Percentage(5)].as_ref())
+                    .constraints([Constraint::Percentage(main_size), Constraint::Percentage(bar_size)].as_ref())
                     .split(f.size());
                 let chunks = Layout::default()
                     .direction(Direction::Horizontal)
@@ -176,6 +189,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                     );
                 f.render_widget(items, disasm_view);
             }
+
+
+            let text = "Howdy world!";
+            let paragraph = Paragraph::new(text.clone())
+                .style(Style::default().fg(Color::White))
+                .block(Block::default().borders(Borders::NONE));
+                // .alignment(Alignment::Left)
+                // .wrap(Wrap { trim: true });
+            f.render_widget(paragraph, _bar);
         })?;
 
         match events.next()? {
