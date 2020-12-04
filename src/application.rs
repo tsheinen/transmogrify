@@ -109,7 +109,10 @@ impl Application {
             .expect("current function doesn't exist in map?");
         for i in 0..bytes.len() {
             // TODO if the assembly is invalid we should handle that.  prob leave it alone?
-            bytes[i] = util::to_hexstring(&util::assemble(disasm[i].clone()).expect("asm to work"));
+            // eprintln!("{:?}", disasm[i].trim().to_string());
+            if let Ok(b) = &util::assemble(disasm[i].clone()) {
+                bytes[i] = util::to_hexstring(b);
+            }
         }
     }
 

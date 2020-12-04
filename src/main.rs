@@ -121,30 +121,35 @@ fn main() -> Result<(), Box<dyn Error>> {
             };
             app.column_width = hex.width as isize;
             {
-                let items: Vec<ListItem> = app
-                    .functions
-                    .iter()
-                    .map(|i| {
-                        let lines = vec![Spans::from(i.name.as_ref())];
-                        ListItem::new(lines).style(Style::default().fg(Color::White))
-                    })
-                    .collect();
-                let items = List::new(items)
-                    .block(if app.selected == SelectedColumn::Function {
-                        Block::default()
-                            .borders(Borders::ALL)
-                            .title("Functions")
-                            .border_style(Style::default().fg(Color::LightGreen))
-                    } else {
-                        Block::default().borders(Borders::ALL).title("Functions")
-                    })
-                    .highlight_style(
-                        Style::default()
-                            .bg(Color::LightGreen)
-                            .fg(Color::Black)
-                            .add_modifier(Modifier::BOLD),
-                    );
-                f.render_stateful_widget(items, functions, &mut app.function_state);
+                // let items: Vec<ListItem> = app
+                //     .functions
+                //     .iter()
+                //     .map(|i| {
+                //         let lines = vec![Spans::from(i.name.as_ref())];
+                //         ListItem::new(lines).style(Style::default().fg(Color::White))
+                //     })
+                //     .collect();
+                // let items = List::new(items)
+                //     .block(if app.selected == SelectedColumn::Function {
+                //         Block::default()
+                //             .borders(Borders::ALL)
+                //             .title("Functions")
+                //             .border_style(Style::default().fg(Color::LightGreen))
+                //     } else {
+                //         Block::default().borders(Borders::ALL).title("Functions")
+                //     })
+                //     .highlight_style(
+                //         Style::default()
+                //             .bg(Color::LightGreen)
+                //             .fg(Color::Black)
+                //             .add_modifier(Modifier::BOLD),
+                //     );
+
+                f.render_stateful_widget(make_list(
+                    app.functions.iter().map(|x| x.name.clone()),
+                    "Functions",
+                    app.selected == SelectedColumn::Function,
+                ), functions, &mut app.function_state);
             }
 
             let func = app.get_current_function();
@@ -169,55 +174,68 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
 
             {
-                let hex_bytes = app.bytes.get(&func.name).unwrap();
-                let items: Vec<ListItem> = hex_bytes
-                    .iter()
-                    .map(|i| {
-                        let lines = vec![Spans::from(i.as_ref())];
-                        ListItem::new(lines).style(Style::default().fg(Color::White))
-                    })
-                    .collect();
-                let items = List::new(items)
-                    .block(if app.selected == SelectedColumn::Hex {
-                        Block::default()
-                            .borders(Borders::ALL)
-                            .title("Hex")
-                            .border_style(Style::default().fg(Color::LightGreen))
-                    } else {
-                        Block::default().borders(Borders::ALL).title("Hex")
-                    })
-                    .highlight_style(
-                        Style::default()
-                            .bg(Color::LightGreen)
-                            .add_modifier(Modifier::BOLD),
-                    );
-                f.render_widget(items, hex);
+                let hex_bytes = app.bytes.get(&func.name).unwrap().clone();
+                // let items: Vec<ListItem> = hex_bytes
+                //     .iter()
+                //     .map(|i| {
+                //         let lines = vec![Spans::from(i.as_ref())];
+                //         ListItem::new(lines).style(Style::default().fg(Color::White))
+                //     })
+                //     .collect();
+                // let items = List::new(items)
+                //     .block(if app.selected == SelectedColumn::Hex {
+                //         Block::default()
+                //             .borders(Borders::ALL)
+                //             .title("Hex")
+                //             .border_style(Style::default().fg(Color::LightGreen))
+                //     } else {
+                //         Block::default().borders(Borders::ALL).title("Hex")
+                //     })
+                //     .highlight_style(
+                //         Style::default()
+                //             .bg(Color::LightGreen)
+                //             .add_modifier(Modifier::BOLD),
+                //     );
+
+
+                f.render_widget(make_list(
+                    hex_bytes,
+                    "Hex",
+                    app.selected == SelectedColumn::Hex,
+                ), hex);
             }
 
             {
-                let disasm = app.disasm.get(&func.name).unwrap();
-                let items: Vec<ListItem> = disasm
-                    .iter()
-                    .map(|i| {
-                        let lines = vec![Spans::from(i.as_ref())];
-                        ListItem::new(lines).style(Style::default().fg(Color::White))
-                    })
-                    .collect();
-                let items = List::new(items)
-                    .block(if app.selected == SelectedColumn::Disasm {
-                        Block::default()
-                            .borders(Borders::ALL)
-                            .title("Disasm")
-                            .border_style(Style::default().fg(Color::LightGreen))
-                    } else {
-                        Block::default().borders(Borders::ALL).title("Disasm")
-                    })
-                    .highlight_style(
-                        Style::default()
-                            .bg(Color::LightGreen)
-                            .add_modifier(Modifier::BOLD),
-                    );
-                f.render_widget(items, disasm_view);
+                let disasm = app.disasm.get(&func.name).unwrap().clone();
+                // let items: Vec<ListItem> = disasm
+                //     .iter()
+                //     .map(|i| {
+                //         let lines = vec![Spans::from(i.as_ref())];
+                //         ListItem::new(lines).style(Style::default().fg(Color::White))
+                //     })
+                //     .collect();
+                // let items = List::new(items)
+                //     .block(if app.selected == SelectedColumn::Disasm {
+                //         Block::default()
+                //             .borders(Borders::ALL)
+                //             .title("Disasm")
+                //             .border_style(Style::default().fg(Color::LightGreen))
+                //     } else {
+                //         Block::default().borders(Borders::ALL).title("Disasm")
+                //     })
+                //     .highlight_style(
+                //         Style::default()
+                //             .bg(Color::LightGreen)
+                //             .add_modifier(Modifier::BOLD),
+                //     );
+                f.render_widget(
+                    make_list(
+                        disasm,
+                        "Disasm",
+                        app.selected == SelectedColumn::Disasm,
+                    ),
+                    disasm_view,
+                );
             }
 
             // let text = "Howdy world!";
@@ -294,4 +312,29 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
+}
+
+fn make_list(items: impl IntoIterator<Item = String>, title: &str, selected: bool) -> List {
+    List::new(
+        items
+            .into_iter()
+            .map(|i| {
+                let lines = vec![Spans::from(i)];
+                ListItem::new(lines).style(Style::default().fg(Color::White))
+            })
+            .collect::<Vec<_>>(),
+    )
+    .block(if selected {
+        Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .border_style(Style::default().fg(Color::LightGreen))
+    } else {
+        Block::default().borders(Borders::ALL).title(title)
+    })
+    .highlight_style(
+        Style::default()
+            .bg(Color::LightGreen)
+            .add_modifier(Modifier::BOLD),
+    )
 }
