@@ -252,5 +252,9 @@ impl Application {
         self.cursor_index = ((cursor % len) + len) % len;
     }
 
+    pub fn get_bar(&self) -> String {
+        format!("Mode: {}", self.mode)
+    }
+
 }
 

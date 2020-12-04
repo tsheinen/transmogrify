@@ -2,6 +2,7 @@ use capstone::prelude::*;
 use capstone::Capstone;
 
 use keystone::OptionValue;
+use serde::export::Formatter;
 
 #[derive(Eq, PartialEq)]
 pub enum SelectedColumn {
@@ -23,6 +24,15 @@ impl SelectedColumn {
 pub enum Mode {
     Viewing,
     Editing,
+}
+
+impl std::fmt::Display for Mode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Mode::Viewing => "Viewing",
+            Mode::Editing => "Editing"
+        })
+    }
 }
 
 pub fn assemble(instr: String) -> Result<Vec<u8>, keystone::Error> {

@@ -17,7 +17,7 @@ use termion::input::MouseTerminal;
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
-use tui::layout::{Constraint, Direction, Layout};
+use tui::layout::{Alignment, Constraint, Direction, Layout};
 use tui::style::{Color, Modifier, Style};
 use tui::text::Spans;
 use tui::widgets::{Block, Borders, List, ListItem, Paragraph};
@@ -79,26 +79,32 @@ fn main() -> Result<(), Box<dyn Error>> {
     app.editor_state.select(Some(0));
     app.function_state.select(Some(0));
 
-
     loop {
         terminal.draw(|f| {
-
-
             // this solves for the correct proportions of the bar/main in a responsive way
             let (main_size, bar_size) = {
-                let (_, rows) = termion::terminal_size().unwrap_or((0,0));
-                let (_, rows_px) = termion::terminal_size_pixels().unwrap_or((0,0));
+                let (_, rows) = termion::terminal_size().unwrap_or((0, 0));
+                let (_, rows_px) = termion::terminal_size_pixels().unwrap_or((0, 0));
                 let rows_px = rows_px as f32;
                 let rows = rows as f32;
                 let bar_size = 1f32 * (rows_px / rows) as f32;
-                (((rows_px - bar_size) / rows_px * 100f32) as u16, (bar_size / rows_px * 100f32) as u16)
+                (
+                    ((rows_px - bar_size) / rows_px * 100f32) as u16,
+                    (bar_size / rows_px * 100f32) as u16,
+                )
             };
 
             let (functions, hex, disasm_view, _bar) = {
                 let vchunks = Layout::default()
                     .direction(Direction::Vertical)
                     .margin(0)
-                    .constraints([Constraint::Percentage(main_size), Constraint::Percentage(bar_size)].as_ref())
+                    .constraints(
+                        [
+                            Constraint::Percentage(main_size),
+                            Constraint::Percentage(bar_size),
+                        ]
+                        .as_ref(),
+                    )
                     .split(f.size());
                 let chunks = Layout::default()
                     .direction(Direction::Horizontal)
@@ -124,7 +130,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                     })
                     .collect();
                 let items = List::new(items)
-                    .block(Block::default().borders(Borders::ALL).title("Functions"))
+                    .block(if app.selected == SelectedColumn::Function {
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title("Functions")
+                            .border_style(Style::default().fg(Color::LightGreen))
+                    } else {
+                        Block::default().borders(Borders::ALL).title("Functions")
+                    })
                     .highlight_style(
                         Style::default()
                             .bg(Color::LightGreen)
@@ -145,7 +158,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
                 SelectedColumn::Disasm => {
                     f.set_cursor(
-                        disasm_view.x + app.get_cursor() as u16 + 1 + (app.mode == Mode::Editing) as u16,
+                        disasm_view.x
+                            + app.get_cursor() as u16
+                            + 1
+                            + (app.mode == Mode::Editing) as u16,
                         disasm_view.y + 1u16 + app.editor_state.selected().unwrap_or(0) as u16,
                     );
                 }
@@ -162,7 +178,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                     })
                     .collect();
                 let items = List::new(items)
-                    .block(Block::default().borders(Borders::ALL).title("Hex"))
+                    .block(if app.selected == SelectedColumn::Hex {
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title("Hex")
+                            .border_style(Style::default().fg(Color::LightGreen))
+                    } else {
+                        Block::default().borders(Borders::ALL).title("Hex")
+                    })
                     .highlight_style(
                         Style::default()
                             .bg(Color::LightGreen)
@@ -181,7 +204,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                     })
                     .collect();
                 let items = List::new(items)
-                    .block(Block::default().borders(Borders::ALL).title("Disasm"))
+                    .block(if app.selected == SelectedColumn::Disasm {
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title("Disasm")
+                            .border_style(Style::default().fg(Color::LightGreen))
+                    } else {
+                        Block::default().borders(Borders::ALL).title("Disasm")
+                    })
                     .highlight_style(
                         Style::default()
                             .bg(Color::LightGreen)
@@ -190,19 +220,17 @@ fn main() -> Result<(), Box<dyn Error>> {
                 f.render_widget(items, disasm_view);
             }
 
-
-            let text = "Howdy world!";
-            let paragraph = Paragraph::new(text.clone())
+            // let text = "Howdy world!";
+            let paragraph = Paragraph::new(app.get_bar())
                 .style(Style::default().fg(Color::White))
                 .block(Block::default().borders(Borders::NONE));
-                // .alignment(Alignment::Left)
-                // .wrap(Wrap { trim: true });
+            // .alignment(Alignment::Center);
+            // .wrap(Wrap { trim: true });
             f.render_widget(paragraph, _bar);
         })?;
 
         match events.next()? {
             Event::Input(input) => {
-
                 // handle mode specific operations
                 match app.mode {
                     Mode::Viewing => match input {
