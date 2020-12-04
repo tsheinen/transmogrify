@@ -219,45 +219,47 @@ impl Application {
             .open(self.file.as_path())?;
         for function in &self.functions {
             file.seek(SeekFrom::Start(function.offset as u64));
-            file.write(&self.bytes
-                .get(&function.name)
-                .map(|x| x.clone())
-                .unwrap_or_else(|| vec![])
-                .iter()
-                .map(|x| from_hexstring(x))
-                .map(|x| x.into_iter())
-                .flatten()
-                .collect::<Vec<u8>>());
+            file.write(
+                &self
+                    .bytes
+                    .get(&function.name)
+                    .map(|x| x.clone())
+                    .unwrap_or_else(|| vec![])
+                    .iter()
+                    .map(|x| from_hexstring(x))
+                    .map(|x| x.into_iter())
+                    .flatten()
+                    .collect::<Vec<u8>>(),
+            );
         }
         Ok(())
     }
-
 
     pub fn select(&mut self, column: SelectedColumn) {
         self.selected = column;
         self.cursor_index = 0;
     }
 
-
     pub fn get_cursor(&self) -> isize {
         self.cursor_index
     }
 
     pub fn set_cursor(&mut self, cursor: isize) {
-        let len =
-            self.get(self.get_current_function().clone().name, self.editor_state.selected().unwrap_or(0))
-                .map(|x| match self.selected {
-                    SelectedColumn::Disasm => x.1.len(),
-                    SelectedColumn::Hex => x.0.len(),
-                    _ => 0,
-                })
-                .unwrap_or(0) as isize;
+        let len = self
+            .get(
+                self.get_current_function().clone().name,
+                self.editor_state.selected().unwrap_or(0),
+            )
+            .map(|x| match self.selected {
+                SelectedColumn::Disasm => x.1.len(),
+                SelectedColumn::Hex => x.0.len(),
+                _ => 0,
+            })
+            .unwrap_or(0) as isize;
         self.cursor_index = ((cursor % len) + len) % len;
     }
 
     pub fn get_bar(&self) -> String {
         format!("Mode: {}", self.mode)
     }
-
 }
-

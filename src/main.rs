@@ -270,7 +270,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         Key::Esc => {
                             app.mode = Mode::Viewing;
                         }
-                        Key::Char(_) | Key::Delete | Key::Backspace => app.apply_key(input),
+                        Key::Char(_) | Key::Delete | Key::Backspace | Key::Home | Key::End => app.apply_key(input),
                         _ => {}
                     },
                 }
@@ -297,6 +297,21 @@ fn main() -> Result<(), Box<dyn Error>> {
                         }
                         Key::Left => app.set_cursor(app.get_cursor() - 1),
                         Key::Right => app.set_cursor(app.get_cursor() + 1),
+                        Key::Home => app.set_cursor(0),
+                        Key::End => {
+                            let len = app
+                                .get(
+                                    app.get_current_function().clone().name,
+                                    app.editor_state.selected().unwrap_or(0),
+                                )
+                                .map(|x| match app.selected {
+                                    SelectedColumn::Disasm => x.1.len(),
+                                    SelectedColumn::Hex => x.0.len(),
+                                    _ => 0,
+                                })
+                                .unwrap_or(0) as isize;
+                            app.set_cursor(len - 1)
+                        }
                         _ => {}
                     },
                 }
