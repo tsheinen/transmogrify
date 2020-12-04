@@ -249,7 +249,6 @@ impl Application {
                     _ => 0,
                 })
                 .unwrap_or(0) as isize;
-        eprintln!("{}", cursor);
         self.cursor_index = ((cursor % len) + len) % len;
     }
 

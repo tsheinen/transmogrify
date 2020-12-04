@@ -179,67 +179,65 @@ fn main() -> Result<(), Box<dyn Error>> {
         })?;
 
         match events.next()? {
-            Event::Input(input) => match app.mode {
-                Mode::Viewing => match input {
-                    Key::Char('q') => {
-                        break;
-                    }
-                    Key::Char('w') => {
-                        app.write();
-                    }
-                    Key::Char('a') => app.select(SelectedColumn::Function),
-                    Key::Char('s') => app.select(SelectedColumn::Hex),
-                    Key::Char('d') => app.select(SelectedColumn::Disasm),
-                    Key::Char('e') if app.selected != SelectedColumn::Function => {
-                        app.mode = Mode::Editing
-                    }
-                    _ => match app.selected {
-                        SelectedColumn::Function => match input {
-                            Key::Down => {
-                                app.next();
-                                app.editor_state.select(Some(0));
-                            }
-                            Key::Up => {
-                                app.previous();
-                                app.editor_state.select(Some(0));
-                            }
-                            _ => {}
-                        },
-                        SelectedColumn::Hex | SelectedColumn::Disasm => match input {
-                            Key::Down => {
-                                app.next();
-                            }
-                            Key::Up => {
-                                app.previous();
-                            }
-                            Key::Left => {
-                                app.set_cursor(app.get_cursor() - 1)
-                            }
-                            Key::Right => {
-                                app.set_cursor(app.get_cursor() + 1)
-                            }
-                            _ => {}
-                        },
+            Event::Input(input) => {
+
+                // handle mode specific operations
+                match app.mode {
+                    Mode::Viewing => match input {
+                        Key::Char('q') => {
+                            break;
+                        }
+                        Key::Char('w') => {
+                            app.write();
+                        }
+                        Key::Char('a') => app.select(SelectedColumn::Function),
+                        Key::Char('s') => app.select(SelectedColumn::Hex),
+                        Key::Char('d') => app.select(SelectedColumn::Disasm),
+                        Key::Char('e') if app.selected != SelectedColumn::Function => {
+                            app.mode = Mode::Editing
+                        }
+                        _ => {}
                     },
-                },
-                Mode::Editing => match input {
-                    Key::Esc => {
-                        app.mode = Mode::Viewing;
-                    }
-                    _ if app.selected.editable() => match input {
+                    Mode::Editing => match input {
+                        Key::Esc => {
+                            app.mode = Mode::Viewing;
+                        }
                         Key::Char(_) | Key::Delete | Key::Backspace => app.apply_key(input),
                         _ => {}
                     },
-                    _ => {}
-                },
-            },
+                }
+
+                // handle cursor movement or list select state
+                match app.selected {
+                    SelectedColumn::Function => match input {
+                        Key::Down => {
+                            app.next();
+                            app.editor_state.select(Some(0));
+                        }
+                        Key::Up => {
+                            app.previous();
+                            app.editor_state.select(Some(0));
+                        }
+                        _ => {}
+                    },
+                    SelectedColumn::Hex | SelectedColumn::Disasm => match input {
+                        Key::Down => {
+                            app.next();
+                        }
+                        Key::Up => {
+                            app.previous();
+                        }
+                        Key::Left => app.set_cursor(app.get_cursor() - 1),
+                        Key::Right => app.set_cursor(app.get_cursor() + 1),
+                        _ => {}
+                    },
+                }
+            }
 
             Event::Tick => {
-                {
-                    let editable = app.selected.editable();
-                    if editable {
-                        app.rebuild();
-                    }
+                let editable = app.selected.editable();
+                if editable {
+                    app.rebuild();
                 }
             }
         }
