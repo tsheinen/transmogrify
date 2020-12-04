@@ -182,14 +182,14 @@ impl Application {
 
         match key {
             Key::Char(c) => {
-                current_str.insert(self.cursor_index as usize, c);
+                current_str.insert(self.cursor_index as usize + 1, c);
                 self.cursor_index += 1;
             }
             Key::Delete => {
-                current_str.remove(self.cursor_index as usize);
+                current_str.remove(self.cursor_index as usize + 1);
             }
             Key::Backspace if self.cursor_index > 0 => {
-                current_str.remove(self.cursor_index as usize - 1);
+                current_str.remove(self.cursor_index as usize);
                 self.cursor_index -= 1;
             }
             _ => {}

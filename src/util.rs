@@ -19,6 +19,7 @@ impl SelectedColumn {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub enum Mode {
     Viewing,
     Editing,

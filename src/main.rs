@@ -126,13 +126,13 @@ fn main() -> Result<(), Box<dyn Error>> {
             match app.selected {
                 SelectedColumn::Hex => {
                     f.set_cursor(
-                        hex.x + app.get_cursor() as u16 + 1,
+                        hex.x + app.get_cursor() as u16 + 1 + (app.mode == Mode::Editing) as u16,
                         hex.y + 1u16 + app.editor_state.selected().unwrap_or(0) as u16,
                     );
                 }
                 SelectedColumn::Disasm => {
                     f.set_cursor(
-                        disasm_view.x + app.get_cursor() as u16 + 1,
+                        disasm_view.x + app.get_cursor() as u16 + 1 + (app.mode == Mode::Editing) as u16,
                         disasm_view.y + 1u16 + app.editor_state.selected().unwrap_or(0) as u16,
                     );
                 }
