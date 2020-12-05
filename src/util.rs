@@ -42,7 +42,7 @@ pub fn assemble(instr: String) -> Result<Vec<u8>, keystone::Error> {
         Arch::X86,
         keystone::Mode::LITTLE_ENDIAN | keystone::Mode::MODE_64,
     )?;
-    engine.option(OptionType::SYNTAX, OptionValue::SYNTAX_NASM)?;
+    engine.option(OptionType::SYNTAX, OptionValue::SYNTAX_INTEL)?;
     engine.asm(instr, 0x1000).map(|x| x.bytes)
 }
 
