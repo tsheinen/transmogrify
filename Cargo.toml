@@ -15,3 +15,4 @@ serde_json = "1.0"
 capstone = "0.7.0"
 keystone = { git = "https://github.com/keystone-engine/keystone" }
 structopt = "0.3"
+fuzzy-matcher = "*"

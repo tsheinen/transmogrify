@@ -2,6 +2,8 @@ use crate::util::{from_hexstring, Mode, SelectedColumn};
 use crate::{util, Function};
 use core::option::Option::{None, Some};
 use core::result::Result::Ok;
+use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::FuzzyMatcher;
 use r2pipe::{open_pipe, R2Pipe};
 use std::collections::HashMap;
 use std::io::{Seek, SeekFrom, Write};
@@ -261,5 +263,19 @@ impl Application {
 
     pub fn get_bar(&self) -> String {
         format!("Mode: {}", self.mode)
+    }
+
+    pub fn get_functions(&self, filter: &str) -> Vec<String> {
+        if filter == "" {
+            self.functions.iter().map(|x| x.name.clone()).collect()
+        } else {
+            let matcher = SkimMatcherV2::default();
+            self.functions
+                .iter()
+                .map(|x| (x, matcher.fuzzy_match(&x.name.clone(), filter).unwrap_or(0)))
+                .filter(|(a, b)| *b > 5)
+                .map(|(a, _)| a.name.clone())
+                .collect()
+        }
     }
 }
