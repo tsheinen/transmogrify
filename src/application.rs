@@ -232,7 +232,7 @@ impl Application {
                     .map(|x| x.into_iter())
                     .flatten()
                     .collect::<Vec<u8>>(),
-            );
+            )?;
         }
         Ok(())
     }
