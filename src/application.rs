@@ -247,17 +247,35 @@ impl Application {
     }
 
     pub fn set_cursor(&mut self, cursor: isize) {
-        let len = self
+        let (len, alt_len) = self
             .get(
                 self.get_current_function().clone().name,
                 self.editor_state.selected().unwrap_or(0),
             )
             .map(|x| match self.selected {
-                SelectedColumn::Disasm => x.1.len(),
-                SelectedColumn::Hex => x.0.len(),
-                _ => 0,
+                SelectedColumn::Disasm => (x.1.len(), x.0.len()),
+                SelectedColumn::Hex => (x.0.len(), x.1.len()),
+                _ => (0, 0),
             })
-            .unwrap_or(0) as isize;
+            .map(|(a, b)| (a as isize, b as isize))
+            .unwrap_or((0, 0));
+        let cursor = if cursor >= len {
+            self.select(match self.selected {
+                SelectedColumn::Disasm => SelectedColumn::Hex,
+                SelectedColumn::Hex => SelectedColumn::Disasm,
+                SelectedColumn::Function => SelectedColumn::Function // this should never happen but idk i don't wanna crash
+            });
+            cursor - len
+        } else if cursor < 0 {
+            self.select(match self.selected {
+                SelectedColumn::Disasm => SelectedColumn::Hex,
+                SelectedColumn::Hex => SelectedColumn::Disasm,
+                SelectedColumn::Function => SelectedColumn::Function // this should never happen but idk i don't wanna crash
+            });
+            alt_len + cursor
+        } else {
+            cursor
+        };
         self.cursor_index = ((cursor % len) + len) % len;
     }
 
