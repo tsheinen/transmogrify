@@ -3,15 +3,16 @@ use capstone::Capstone;
 
 use keystone::OptionValue;
 use serde::export::Formatter;
+use serde::{Deserialize, Serialize};
 
 #[derive(Eq, PartialEq)]
-pub enum SelectedColumn {
+pub enum Column {
     Function,
     Hex,
     Disasm,
 }
 
-impl SelectedColumn {
+impl Column {
     pub fn editable(&self) -> bool {
         match self {
             Self::Function => false,
@@ -86,6 +87,16 @@ pub fn from_hexstring(str: &str) -> Vec<u8> {
         .map(|x| u8::from_str_radix(&x.iter().collect::<String>(), 16).unwrap_or(0))
         .collect()
 }
+
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Function {
+    pub name: String,
+    pub offset: usize,
+    pub size: usize,
+}
+
+
 
 
 #[cfg(test)]

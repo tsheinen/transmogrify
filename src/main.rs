@@ -3,7 +3,7 @@ mod event;
 mod util;
 
 use crate::event::{Event, Events};
-use crate::util::{Mode, SelectedColumn};
+use crate::util::{Mode, Column, Function};
 
 use crate::application::Application;
 use r2pipe::{open_pipe, R2Pipe};
@@ -28,13 +28,6 @@ use tui::Terminal;
 struct Opt {
     #[structopt(name = "FILE", parse(from_os_str))]
     file: PathBuf,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Function {
-    name: String,
-    offset: usize,
-    size: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -125,7 +118,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     make_list(
                         app.get_functions(""),
                         "Functions",
-                        app.selected == SelectedColumn::Function,
+                        app.selected == Column::Function,
                     ),
                     functions,
                     &mut app.function_state,
@@ -135,13 +128,13 @@ fn main() -> Result<(), Box<dyn Error>> {
             let func = app.get_current_function();
 
             match app.selected {
-                SelectedColumn::Hex => {
+                Column::Hex => {
                     f.set_cursor(
                         hex.x + app.get_cursor() as u16 + 1 + (app.mode == Mode::Editing) as u16,
                         hex.y + 1u16 + app.editor_state.selected().unwrap_or(0) as u16,
                     );
                 }
-                SelectedColumn::Disasm => {
+                Column::Disasm => {
                     f.set_cursor(
                         disasm_view.x
                             + app.get_cursor() as u16
@@ -157,7 +150,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let hex_bytes = app.bytes.get(&func.name).unwrap().clone();
 
                 f.render_widget(
-                    make_list(hex_bytes, "Hex", app.selected == SelectedColumn::Hex),
+                    make_list(hex_bytes, "Hex", app.selected == Column::Hex),
                     hex,
                 );
             }
@@ -166,7 +159,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let disasm = app.disasm.get(&func.name).unwrap().clone();
 
                 f.render_widget(
-                    make_list(disasm, "Disasm", app.selected == SelectedColumn::Disasm),
+                    make_list(disasm, "Disasm", app.selected == Column::Disasm),
                     disasm_view,
                 );
             }
@@ -188,10 +181,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                         Key::Char('w') => {
                             app.write();
                         }
-                        Key::Char('a') => app.select(SelectedColumn::Function),
-                        Key::Char('s') => app.select(SelectedColumn::Hex),
-                        Key::Char('d') => app.select(SelectedColumn::Disasm),
-                        Key::Char('e') if app.selected != SelectedColumn::Function => {
+                        Key::Char('a') => app.select(Column::Function),
+                        Key::Char('s') => app.select(Column::Hex),
+                        Key::Char('d') => app.select(Column::Disasm),
+                        Key::Char('e') if app.selected != Column::Function => {
                             app.mode = Mode::Editing
                         }
                         _ => {}
@@ -209,23 +202,23 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                 // handle cursor movement or list select state
                 match app.selected {
-                    SelectedColumn::Function => match input {
+                    Column::Function => match input {
                         Key::Down => {
-                            app.next();
+                            app.next_column();
                             app.editor_state.select(Some(0));
                         }
                         Key::Up => {
-                            app.previous();
+                            app.previous_column();
                             app.editor_state.select(Some(0));
                         }
                         _ => {}
                     },
-                    SelectedColumn::Hex | SelectedColumn::Disasm => match input {
+                    Column::Hex | Column::Disasm => match input {
                         Key::Down => {
-                            app.next();
+                            app.next_column();
                         }
                         Key::Up => {
-                            app.previous();
+                            app.previous_column();
                         }
                         Key::Left => app.set_cursor(app.get_cursor() - 1),
                         Key::Right => app.set_cursor(app.get_cursor() + 1),
@@ -237,8 +230,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                                     app.editor_state.selected().unwrap_or(0),
                                 )
                                 .map(|x| match app.selected {
-                                    SelectedColumn::Disasm => x.1.len(),
-                                    SelectedColumn::Hex => x.0.len(),
+                                    Column::Disasm => x.1.len(),
+                                    Column::Hex => x.0.len(),
                                     _ => 0,
                                 })
                                 .unwrap_or(0) as isize;
