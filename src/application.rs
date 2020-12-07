@@ -1,4 +1,4 @@
-use crate::util::{from_hexstring, Mode, SelectedColumn};
+use crate::util::{from_hexstring, Mode, Column};
 use crate::{util, Function};
 use core::option::Option::{None, Some};
 use core::result::Result::Ok;
@@ -19,7 +19,7 @@ pub struct Application {
     pub disasm: HashMap<String, Vec<String>>,
     pub function_state: ListState,
     pub editor_state: ListState,
-    pub selected: SelectedColumn,
+    pub selected: Column,
     pub mode: Mode,
     cursor_index: isize,
     pub column_width: isize,
@@ -27,7 +27,6 @@ pub struct Application {
 
 impl Application {
     pub fn new<P: AsRef<str>>(path: P) -> Self {
-        // disassemble this with capstone
         let mut r2p = open_pipe!(Some(&path)).unwrap();
         r2p.cmd("aaa").unwrap();
         let x = r2p.cmd("aflj").unwrap();
@@ -62,7 +61,7 @@ impl Application {
             disasm: disasm.into_iter().collect(),
             function_state: ListState::default(),
             editor_state: ListState::default(),
-            selected: SelectedColumn::Function,
+            selected: Column::Function,
             mode: Mode::Viewing,
             cursor_index: 0,
             column_width: 0,
@@ -119,40 +118,45 @@ impl Application {
     }
 
     pub fn values(&self, function: String) -> impl Iterator<Item = (String, String)> {
-        let bytes = self.bytes.get(&function).cloned().unwrap_or_else(|| vec![]);
-        let disasm = self
-            .disasm
+        self.bytes
             .get(&function)
             .cloned()
-            .unwrap_or_else(|| vec![]);
-        bytes.into_iter().zip(disasm.into_iter())
+            .unwrap_or_else(|| vec![])
+            .into_iter()
+            .zip(
+                self.disasm
+                    .get(&function)
+                    .cloned()
+                    .unwrap_or_else(|| vec![])
+                    .into_iter(),
+            )
     }
 
     pub fn get_current_function(&self) -> &Function {
         &self.functions[self.function_state.selected().unwrap_or(0)]
     }
 
-    pub fn next(&mut self) {
-        self.mutate_selector(1)
+    pub fn next_column(&mut self) {
+        self.increment_selected_column(1)
     }
 
-    pub fn previous(&mut self) {
-        self.mutate_selector(-1)
+    pub fn previous_column(&mut self) {
+        self.increment_selected_column(-1)
     }
 
-    fn mutate_selector(&mut self, val: isize) {
+    fn increment_selected_column(&mut self, val: isize) {
         let current_func_name = self.get_current_function().name.clone();
         let len = match self.selected {
-            SelectedColumn::Function => self.functions.len() as isize,
-            SelectedColumn::Hex | SelectedColumn::Disasm => self
+            Column::Function => self.functions.len() as isize,
+            Column::Hex | Column::Disasm => self
                 .bytes
                 .get(&current_func_name)
                 .map(|x| x.len())
                 .unwrap_or(0) as isize,
         };
         let current_state = match self.selected {
-            SelectedColumn::Function => &mut self.function_state,
-            SelectedColumn::Hex | SelectedColumn::Disasm => &mut self.editor_state,
+            Column::Function => &mut self.function_state,
+            Column::Hex | Column::Disasm => &mut self.editor_state,
         };
 
         let next = (current_state.selected().unwrap_or(0) as isize + val).rem_euclid(len) as usize;
@@ -164,8 +168,8 @@ impl Application {
         let current_func_name = self.get_current_function().name.clone();
 
         let current_state = match self.selected {
-            SelectedColumn::Function => &mut self.function_state,
-            SelectedColumn::Hex | SelectedColumn::Disasm => &mut self.editor_state,
+            Column::Function => &mut self.function_state,
+            Column::Hex | Column::Disasm => &mut self.editor_state,
         }
         .selected()
         .unwrap_or(0);
@@ -173,14 +177,14 @@ impl Application {
         let mut empty: Vec<String> = vec![];
 
         let current_str = match self.selected {
-            SelectedColumn::Hex => {
+            Column::Hex => {
                 &mut self.bytes.get_mut(&current_func_name).unwrap_or(&mut empty)[current_state]
             }
-            SelectedColumn::Disasm => &mut self
+            Column::Disasm => &mut self
                 .disasm
                 .get_mut(&current_func_name)
                 .unwrap_or(&mut empty)[current_state],
-            _ => panic!(
+            Column::Function => panic!(
                 "trying to edit on a col which should never happen, means my logic is broken"
             ),
         };
@@ -203,13 +207,13 @@ impl Application {
 
     pub fn rebuild(&mut self) {
         match self.selected {
-            SelectedColumn::Hex => {
+            Column::Hex => {
                 self.rebuild_asm();
             }
-            SelectedColumn::Disasm => {
+            Column::Disasm => {
                 self.rebuild_bytes();
             }
-            SelectedColumn::Function => {
+            Column::Function => {
                 panic!("should never call rebuild when current column is function");
             }
         }
@@ -237,7 +241,7 @@ impl Application {
         Ok(())
     }
 
-    pub fn select(&mut self, column: SelectedColumn) {
+    pub fn select(&mut self, column: Column) {
         self.selected = column;
         self.cursor_index = 0;
     }
@@ -253,24 +257,24 @@ impl Application {
                 self.editor_state.selected().unwrap_or(0),
             )
             .map(|x| match self.selected {
-                SelectedColumn::Disasm => (x.1.len(), x.0.len()),
-                SelectedColumn::Hex => (x.0.len(), x.1.len()),
+                Column::Disasm => (x.1.len(), x.0.len()),
+                Column::Hex => (x.0.len(), x.1.len()),
                 _ => (0, 0),
             })
             .map(|(a, b)| (a as isize, b as isize))
             .unwrap_or((0, 0));
         let cursor = if cursor >= len {
             self.select(match self.selected {
-                SelectedColumn::Disasm => SelectedColumn::Hex,
-                SelectedColumn::Hex => SelectedColumn::Disasm,
-                SelectedColumn::Function => SelectedColumn::Function // this should never happen but idk i don't wanna crash
+                Column::Disasm => Column::Hex,
+                Column::Hex => Column::Disasm,
+                Column::Function => Column::Function, // this should never happen but idk i don't wanna crash
             });
             cursor - len
         } else if cursor < 0 {
             self.select(match self.selected {
-                SelectedColumn::Disasm => SelectedColumn::Hex,
-                SelectedColumn::Hex => SelectedColumn::Disasm,
-                SelectedColumn::Function => SelectedColumn::Function // this should never happen but idk i don't wanna crash
+                Column::Disasm => Column::Hex,
+                Column::Hex => Column::Disasm,
+                Column::Function => Column::Function, // this should never happen but idk i don't wanna crash
             });
             alt_len + cursor
         } else {
